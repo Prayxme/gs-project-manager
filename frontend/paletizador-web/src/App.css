@@ -8,9 +8,9 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #131314; /* Fondo oscuro principal tipo Gemini */
-  color: #E3E3E3; /* Texto principal claro */
-  overflow: hidden; /* Evita el scroll en la pantalla completa */
+  background-color: #131314; 
+  color: #E3E3E3; 
+  overflow: hidden; 
 }
 
 /* Estilización moderna del Slider */

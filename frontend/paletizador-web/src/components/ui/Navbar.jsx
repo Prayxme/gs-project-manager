@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function Navbar({ lang, setLang, isDarkMode, setIsDarkMode, t, theme }) {
   return (
     <header className={`h-14 border-b flex justify-between items-center px-6 shrink-0 ${theme.bgHeader}`}>

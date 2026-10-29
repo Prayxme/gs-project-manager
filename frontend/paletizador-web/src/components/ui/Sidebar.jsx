@@ -1,4 +1,3 @@
-import React from 'react';
 import { SKU_PALETTE } from '../../constants/palette';
 
 export default function Sidebar({

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Text, Billboard } from '@react-three/drei';
 
 export default function BoundingGrid({ isDarkMode, t }) {
