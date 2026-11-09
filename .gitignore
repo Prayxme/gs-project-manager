@@ -37,3 +37,6 @@ BITACORDA.md
 # Datos locales (base de datos SQLite)
 backend/data/
 *.db
+
+# Bitácora del proyecto (solo local)
+BITACORA.md
