@@ -24,6 +24,7 @@ export default function LayoutSelector({
           <button
             key={idx}
             onClick={() => setGrupoSeleccionadoIdx(idx)}
+            title={grupo.po ? `PO ${grupo.po}${grupo.dc ? ` · DC ${grupo.dc}` : ""}` : undefined}
             className={`px-1.5 py-1.5 rounded-xl text-[11px] font-extrabold transition-all flex flex-col items-center justify-center border ${
               grupoSeleccionadoIdx === idx
                 ? "bg-[#0284C7] text-white shadow-md border-transparent"

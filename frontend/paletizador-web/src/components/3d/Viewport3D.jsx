@@ -4,6 +4,7 @@ import PalletBase from './PalletBase';
 import BoundingGrid from './BoundingGrid';
 import Box from './Box';
 import { SKU_PALETTE } from '../../constants/palette';
+import { colorKey } from '../../utils/palletUtils';
 
 export default function Viewport3D({
   palletData,
@@ -14,6 +15,18 @@ export default function Viewport3D({
   offsets,
   theme,
 }) {
+  // Leyenda: solo las combinaciones PO + SKU presentes en el pallet visible.
+  const leyenda = [];
+  const vistos = new Set();
+  (palletData?.placed_items || []).forEach((item) => {
+    const sku = item.sku?.trim() || "UNKNOWN";
+    const key = colorKey(item.po, sku);
+    if (!vistos.has(key)) {
+      vistos.add(key);
+      leyenda.push({ key, sku, po: item.po, color: skuColorMap[key] || SKU_PALETTE[0] });
+    }
+  });
+
   return (
     <div className={`flex-1 flex flex-col relative ${theme.viewportBg}`}>
       {/* Header Viewport */}
@@ -24,10 +37,10 @@ export default function Viewport3D({
 
         {palletData && (
           <div className="flex flex-wrap gap-1.5 mt-2.5 pointer-events-auto max-h-24 overflow-y-auto pr-2">
-            {Object.entries(skuColorMap).map(([sku, color]) => (
+            {leyenda.map(({ key, sku, po, color }) => (
               <span
-                key={sku}
-                title={sku}
+                key={key}
+                title={po ? `${sku} · PO ${po}` : sku}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border backdrop-blur-md shadow-sm truncate max-w-[220px] ${
                   isDarkMode
                     ? "bg-[#111422]/90 border-slate-700 text-slate-200"
@@ -38,7 +51,10 @@ export default function Viewport3D({
                   className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
                   style={{ backgroundColor: color }}
                 />
-                <span className="truncate font-mono">{sku}</span>
+                <span className="truncate font-mono">
+                  {sku}
+                  {po && <span className="opacity-60"> · PO {po}</span>}
+                </span>
               </span>
             ))}
           </div>
@@ -63,7 +79,7 @@ export default function Viewport3D({
                   <Box
                     key={`box-${index}`}
                     item={item}
-                    color={skuColorMap[skuName] || SKU_PALETTE[0]}
+                    color={skuColorMap[colorKey(item.po, skuName)] || SKU_PALETTE[0]}
                     isDarkMode={isDarkMode}
                     offsetX={offsets.x}
                     offsetZ={offsets.z}

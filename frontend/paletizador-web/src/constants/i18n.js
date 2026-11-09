@@ -45,7 +45,11 @@ export const I18N = {
     modalCustNo: "Cust No",
     modalDetectedSkus: "Detected Items",
     modalCancel: "Cancel",
-    modalImport: "Import to Engine"
+    modalImport: "Import to Engine",
+    modalBoxes: "boxes",
+    modalPages: "pages",
+    modalWarnings: "Parser warnings",
+    destinationDc: "DC"
   },
   es: {
     appTitle: "Golden State Pallet Tool 3D",
@@ -93,6 +97,10 @@ export const I18N = {
     modalCustNo: "N° Cliente",
     modalDetectedSkus: "Items Detectados",
     modalCancel: "Cancelar",
-    modalImport: "Importar al Motor"
+    modalImport: "Importar al Motor",
+    modalBoxes: "cajas",
+    modalPages: "páginas",
+    modalWarnings: "Advertencias del lector",
+    destinationDc: "DC"
   }
 };

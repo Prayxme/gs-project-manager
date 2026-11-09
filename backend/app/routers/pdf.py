@@ -12,5 +12,7 @@ async def parse_pdf(file: UploadFile = File(...)):
     try:
         content = await file.read()
         return extraer_datos_pick_ticket(content)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analizando el archivo PDF: {str(e)}")

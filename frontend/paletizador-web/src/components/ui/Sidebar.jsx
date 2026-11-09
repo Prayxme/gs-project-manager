@@ -1,4 +1,5 @@
 import { SKU_PALETTE } from '../../constants/palette';
+import { colorKey } from '../../utils/palletUtils';
 
 export default function Sidebar({
   orderInfo,
@@ -17,7 +18,7 @@ export default function Sidebar({
   theme,
 }) {
   return (
-    <div className={`w-[390px] border-r flex flex-col shrink-0 ${theme.bgSidebar}`}>
+    <div className={`w-[420px] border-r flex flex-col shrink-0 ${theme.bgSidebar}`}>
       {/* Header Sidebar */}
       <div className="p-4 border-b border-inherit flex justify-between items-center">
         <h2 className={`text-sm font-extrabold tracking-wide uppercase ${theme.textTitle}`}>
@@ -35,33 +36,33 @@ export default function Sidebar({
       {/* Formularios */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <div className="space-y-2">
-          <h3 className={`text-[10px] font-extrabold uppercase tracking-widest ${theme.textSubtitle}`}>
+          <h3 className={`text-xs font-extrabold uppercase tracking-widest ${theme.textSubtitle}`}>
             {t.orderInfoTitle}
           </h3>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] text-slate-400 font-bold block mb-0.5">{t.poNumber}</label>
+              <label className="text-xs text-slate-500 font-bold block mb-0.5">{t.poNumber}</label>
               <input
                 type="text"
                 value={orderInfo.po}
                 onChange={(e) => setOrderInfo({ ...orderInfo, po: e.target.value })}
-                className={`w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border outline-none ${theme.inputBg}`}
+                className={`w-full text-sm font-mono px-2.5 py-1.5 rounded-lg border outline-none ${theme.inputBg}`}
               />
             </div>
             <div>
-              <label className="text-[10px] text-slate-400 font-bold block mb-0.5">{t.pikTik}</label>
+              <label className="text-xs text-slate-500 font-bold block mb-0.5">{t.pikTik}</label>
               <input
                 type="text"
                 value={orderInfo.piktik}
                 onChange={(e) => setOrderInfo({ ...orderInfo, piktik: e.target.value })}
-                className={`w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border outline-none ${theme.inputBg}`}
+                className={`w-full text-sm font-mono px-2.5 py-1.5 rounded-lg border outline-none ${theme.inputBg}`}
               />
             </div>
           </div>
         </div>
 
         {itemsForm.map((item, idx) => {
-          const skuColor = skuColorMap[item.sku?.trim()] || SKU_PALETTE[0];
+          const skuColor = skuColorMap[colorKey(item.po, item.sku?.trim() || `ITEM-${idx + 1}`)] || SKU_PALETTE[0];
           return (
             <div
               key={idx}
@@ -79,65 +80,74 @@ export default function Sidebar({
               )}
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: skuColor }} />
-                <h3 className={`text-[10px] font-extrabold uppercase tracking-wider ${theme.textSubtitle}`}>
+                <h3 className={`text-xs font-extrabold uppercase tracking-wider ${theme.textSubtitle}`}>
                   {t.skuTitle} #{idx + 1}
                 </h3>
+                {item.po && (
+                  <span
+                    className={`ml-auto mr-5 text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
+                      isDarkMode ? "bg-slate-800 text-slate-200" : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    PO {item.po}{item.dc ? ` · DC ${item.dc}` : ""}
+                  </span>
+                )}
               </div>
               <div className="flex gap-2">
                 <div className="flex-[2]">
-                  <label className="text-[9px] text-slate-400 font-bold block mb-0.5">{t.skuName}</label>
+                  <label className="text-[11px] text-slate-500 font-bold block mb-0.5">{t.skuName}</label>
                   <input
                     type="text"
                     value={item.sku}
                     onChange={(e) => actualizarItem(idx, "sku", e.target.value)}
-                    className={`w-full text-xs font-mono font-bold px-2 py-1 rounded border outline-none ${theme.inputBg}`}
+                    className={`w-full text-sm font-mono font-bold px-2 py-1 rounded border outline-none ${theme.inputBg}`}
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[9px] text-slate-400 font-bold block mb-0.5">{t.quantity}</label>
+                  <label className="text-[11px] text-slate-500 font-bold block mb-0.5">{t.quantity}</label>
                   <input
                     type="number"
                     value={item.qty}
                     onChange={(e) => actualizarItem(idx, "qty", e.target.value)}
-                    className={`w-full text-xs font-mono text-center font-bold px-2 py-1 rounded border outline-none ${theme.inputBg}`}
+                    className={`w-full text-sm font-mono text-center font-bold px-2 py-1 rounded border outline-none ${theme.inputBg}`}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 <div>
-                  <label className="text-[9px] text-slate-400 font-bold block mb-0.5">{t.length}</label>
+                  <label className="text-[11px] text-slate-500 font-bold block mb-0.5">{t.length}</label>
                   <input
                     type="number"
                     value={item.length}
                     onChange={(e) => actualizarItem(idx, "length", e.target.value)}
-                    className={`w-full text-xs font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
+                    className={`w-full text-sm font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] text-slate-400 font-bold block mb-0.5">{t.width}</label>
+                  <label className="text-[11px] text-slate-500 font-bold block mb-0.5">{t.width}</label>
                   <input
                     type="number"
                     value={item.width}
                     onChange={(e) => actualizarItem(idx, "width", e.target.value)}
-                    className={`w-full text-xs font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
+                    className={`w-full text-sm font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] text-slate-400 font-bold block mb-0.5">{t.height}</label>
+                  <label className="text-[11px] text-slate-500 font-bold block mb-0.5">{t.height}</label>
                   <input
                     type="number"
                     value={item.height}
                     onChange={(e) => actualizarItem(idx, "height", e.target.value)}
-                    className={`w-full text-xs font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
+                    className={`w-full text-sm font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] text-slate-400 font-bold block mb-0.5">{t.weight}</label>
+                  <label className="text-[11px] text-slate-500 font-bold block mb-0.5">{t.weight}</label>
                   <input
                     type="number"
                     value={item.weight}
                     onChange={(e) => actualizarItem(idx, "weight", e.target.value)}
-                    className={`w-full text-xs font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
+                    className={`w-full text-sm font-mono text-center px-1.5 py-1 rounded border ${theme.inputBg}`}
                   />
                 </div>
               </div>

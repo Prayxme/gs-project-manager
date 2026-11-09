@@ -1,97 +1,207 @@
+"""
+Lectura de Pick Tickets (PDF) de Wiesner Products.
+
+Estructura real observada: el PDF contiene N páginas; cada página lleva un
+"PikTik No" y su "Page". Un mismo PikTik puede ocupar varias páginas (cuando
+detalla muchos SKU). Cada PikTik tiene una única PO y un destino (SHIP TO / DC).
+
+Salida: una orden por PikTik, con PO, DC, destino y todas sus líneas de SKU,
+acumuladas a través de sus páginas.
+"""
 import io
 import re
-from typing import Dict, Any
+from typing import Any, Dict, List, Optional
+
 import pdfplumber
 
-def extraer_datos_pick_ticket(content: bytes) -> Dict[str, Any]:
-    pages_text = []
-    with pdfplumber.open(io.BytesIO(content)) as pdf:
-        for page in pdf.pages:
-            pages_text.append(page.extract_text() or "")
+_RE_PIKTIK = re.compile(r"^(\d{2}/\d{2}/\d{4})\s+(\d{5,})\s+(\d+)\s*$", re.MULTILINE)
+_RE_PO_ROW = re.compile(
+    r"^\d+\s+\d{2}/\d{2}/\d{4}\s+(\S+)\s+\d+\s+(\d+)\s+\d{2}/\d{2}/\d{4}", re.MULTILINE
+)
+_RE_SHIP_DC = re.compile(r"SHIP TO:\s*(?:DC\s*#?\s*)?(\d+)", re.IGNORECASE)
+_RE_STORE_DC = re.compile(r"For STORE #:\s*(?:DC\s*#?\s*)?(\d+)", re.IGNORECASE)
+_RE_CITY = re.compile(r"([A-Z][A-Z .'\-]+?),+\s*([A-Z]{2})\s+(\d{5})")
+_RE_BOX = re.compile(
+    r"BOX LxWxH:\s*([\d.]+)\s*x\s*([\d.]+)\s*x\s*([\d.]+)\s*IN,\s*([\d.,]+)\s*LB", re.IGNORECASE
+)
+_RE_TOTAL = re.compile(r"^TOTAL:\s*[\d,]+\s+([\d,]+)\s+TOT WEIGHT", re.MULTILINE)
+_RE_NUM = re.compile(r"^[\d,]+$")
 
-    full_text = "\n".join(pages_text)
 
-    # 1. COMPAÑÍA (Membrete emisor)
-    company = "WIESNER PRODUCTS, INC."
-    first_page_lines = [l.strip() for l in pages_text[0].split("\n") if l.strip()]
-    for line in first_page_lines[:8]:
-        if re.match(r'^[W\d\s\-#]+$', line, re.IGNORECASE):
+def _to_int(s: str) -> int:
+    return int(s.replace(",", ""))
+
+
+def _parse_item_line(line: str) -> Dict[str, Any]:
+    """'3-M2056ST MARS P24 S40570 2 2 56 94 MENS 3 PACK ... 295344'
+    -> sku = primer token; variant = tokens hasta la columna de cantidades;
+       cases = último número de la primera racha numérica de >= 2 tokens
+       (Qty Ord puede venir partido en miles: '2 2 56' = 2256, luego Cases);
+       cust_sku = último token numérico de la línea."""
+    tokens = line.split()
+    sku = tokens[0] if tokens else ""
+    cust_sku = tokens[-1] if len(tokens) > 1 and tokens[-1].isdigit() else ""
+    rest = tokens[1:]
+    i = 0
+    while i < len(rest):
+        if _RE_NUM.match(rest[i]):
+            j = i
+            while j < len(rest) and _RE_NUM.match(rest[j]):
+                j += 1
+            if j - i >= 2:
+                return {
+                    "sku": sku,
+                    "variant": " ".join(rest[:i]),
+                    "cust_sku": cust_sku,
+                    "cases": _to_int(rest[j - 1]),
+                }
+            i = j
+        else:
+            i += 1
+    return {"sku": sku, "variant": "", "cust_sku": cust_sku, "cases": None}
+
+
+def _parse_page(text: str) -> Optional[Dict[str, Any]]:
+    m = _RE_PIKTIK.search(text)
+    if not m:
+        return None
+    lines = [l.strip() for l in text.split("\n")]
+    page: Dict[str, Any] = {"piktik": m.group(2), "page_no": int(m.group(3))}
+
+    # Compañía: línea inmediatamente anterior a la dirección "1410 Broadway".
+    company = ""
+    for i, l in enumerate(lines):
+        if "broadway" in l.lower() and i > 0:
+            company = lines[i - 1]
+            break
+    page["company"] = company
+
+    po_m = _RE_PO_ROW.search(text)
+    page["cust_no"] = po_m.group(1) if po_m else ""
+    page["po"] = po_m.group(2) if po_m else ""
+
+    dc_m = _RE_SHIP_DC.search(text) or _RE_STORE_DC.search(text)
+    page["ship_to_dc"] = dc_m.group(1) if dc_m else ""
+
+    cities = _RE_CITY.findall(text)
+    # La primera ciudad suele ser el SOLD TO (Framingham); el destino es la última.
+    page["destination"] = f"{cities[-1][0].strip()}, {cities[-1][1]}" if cities else ""
+
+    tot_m = _RE_TOTAL.search(text)
+    page["declared_cases"] = _to_int(tot_m.group(1)) if tot_m else None
+
+    # Líneas de producto: cada "BOX LxWxH:" va precedido por la línea del ítem.
+    items: List[Dict[str, Any]] = []
+    for idx, l in enumerate(lines):
+        bm = _RE_BOX.search(l)
+        if not bm:
             continue
-        if any(k in line.upper() for k in ["PICK TICKET", "PIK TIK", "PAGE", "TEL:", "FAX:", "SOLD TO:"]):
-            continue
-        if re.search(r'\b(broadway|street|st|avenue|ave|floor|fl|suite|ste|blvd)\b', line, re.IGNORECASE):
-            continue
-        company = line
-        break
+        j = idx - 1
+        while j >= 0 and not lines[j]:
+            j -= 1
+        info = _parse_item_line(lines[j]) if j >= 0 else {"sku": "", "variant": "", "cust_sku": "", "cases": None}
 
-    # 2. CUST NO
-    cust_no_match = re.search(r"Cust No[\s\S]*?\n\d+\s+\d{2}/\d{2}/\d{4}\s+([A-Z0-9]+)", full_text)
-    cust_no = cust_no_match.group(1) if cust_no_match else "MARS125"
-
-    # 3. EXTRAER TODOS LOS POS Y PIKTIKS (Multi-orden / Wave)
-    pos_encontrados = re.findall(r"PO No[\s\S]*?\n(?:\d+\s+[\d\/]+\s+[A-Z0-9]+\s+\d+\s+([0-9]+))", full_text)
-    if not pos_encontrados:
-        pos_encontrados = re.findall(r"\b0\d{7}\b", full_text)
-    pos_unicos = list(dict.fromkeys(pos_encontrados))
-    po_str = ", ".join(pos_unicos) if pos_unicos else "02530856"
-
-    piktiks_encontrados = re.findall(r"Pik Tik No\s*\|\s*Page[\s\S]*?\n[\d\/]+\s*\|\s*(\d+)", full_text)
-    if not piktiks_encontrados:
-        piktiks_encontrados = re.findall(r"\b68\d{5}\b", full_text)
-    piktiks_unicos = list(dict.fromkeys(piktiks_encontrados))
-    piktik_str = ", ".join(piktiks_unicos) if piktiks_unicos else "6846787"
-
-    # 4. EXTRACCIÓN DE CADA SKU / CARTONES
-    items = []
-    chunks = full_text.split("BOX LxWxH:")
-
-    for i in range(1, len(chunks)):
-        chunk = chunks[i]
-        prev_text = chunks[i - 1]
-
-        # Dimensiones y Peso
-        dim_match = re.search(r"^\s*([\d\.]+)\s*x\s*([\d\.]+)\s*x\s*([\d\.]+).*?(?:IN,)?\s*([\d\.]+)\s*LB", chunk)
-        if dim_match:
-            l, w, h, wt = dim_match.groups()
-
-            # Cartones
-            carton_match = re.search(r"Cartons\s*->\s*([\d,]+)", chunk, re.IGNORECASE)
-            if not carton_match:
-                carton_match = re.search(r"Cases\s*(?:Description[^\n]*)?\n.*?\|\s*([\d,]+)", prev_text, re.DOTALL)
-            if not carton_match:
-                carton_match = re.search(r"[\d\.]+\s*CFT\s*\|\s*([\d,]+)", chunk)
-
-            cartons_qty = int(carton_match.group(1).replace(',', '')) if carton_match else 0
-
-            # EXTRACCIÓN ROBUSTA DE ITEM # (Maneja con y sin guiones)
-            # Busca líneas posteriores a "ITEM #"
-            sku_name = ""
-            lines_prev = [lp.strip() for lp in prev_text.split("\n") if lp.strip()]
-            for lp in reversed(lines_prev[-6:]):
-                # Ignorar encabezados de tabla
-                if any(hdr in lp.upper() for hdr in ["ITEM #", "QTY ORD", "DESCRIPTION", "ROUTING", "DATE", "MARSHALLS"]):
-                    continue
-                # Si contiene el patrón de SKU Wiesner/Marshalls (ej. 6B4543MS, 1KBB4578MS, 6TRB4710TJ)
-                if re.search(r'\b[0-9A-Z]{6,12}\b', lp) and not re.search(r'^\d{7,}$', lp):
-                    sku_name = lp.split("|")[0].strip()
+        # Cartones: la columna "Cases" de la línea del ítem es la fuente de verdad.
+        # (La fila "Cartons ->" redondea por talla y puede sobrar, p. ej. 20 vs 18.)
+        qty = info.pop("cases") or 0
+        if qty <= 0:
+            for k in range(idx + 1, min(idx + 8, len(lines))):
+                if lines[k].lower().startswith("cartons"):
+                    nums = re.findall(r"[\d,]+", lines[k].split("->", 1)[-1])
+                    if nums:
+                        qty = _to_int(nums[-1])
                     break
 
-            if not sku_name:
-                sku_name = f"ITEM-{i}"
+        items.append(
+            {
+                **info,
+                "qty": qty,
+                "l": float(bm.group(1)),
+                "w": float(bm.group(2)),
+                "h": float(bm.group(3)),
+                "weight": float(bm.group(4).replace(",", "")),
+            }
+        )
+    page["items"] = items
+    return page
 
-            items.append({
-                "sku": sku_name,
-                "qty": cartons_qty,
-                "l": float(l),
-                "w": float(w),
-                "h": float(h),
-                "weight": float(wt)
-            })
+
+def _desambiguar_skus(items: List[Dict[str, Any]]) -> None:
+    """Si una orden repite el mismo código de ítem con variantes distintas
+    (p. ej. MLGO40416 001 / 025 / CARB), agrega la primera palabra de la
+    variante para que cada línea conserve una identidad única."""
+    conteo: Dict[str, int] = {}
+    for it in items:
+        conteo[it["sku"]] = conteo.get(it["sku"], 0) + 1
+    for it in items:
+        if conteo[it["sku"]] > 1 and it["variant"]:
+            it["sku"] = f"{it['sku']} {it['variant'].split()[0]}"
+
+
+def extraer_datos_pick_ticket(content: bytes) -> Dict[str, Any]:
+    with pdfplumber.open(io.BytesIO(content)) as pdf:
+        pages_text = [(p.extract_text() or "") for p in pdf.pages]
+    return parsear_paginas(pages_text)
+
+
+def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
+    """Agrupa las páginas por PikTik y devuelve una orden por PikTik."""
+    warnings: List[str] = []
+    orders: Dict[str, Dict[str, Any]] = {}
+    company = ""
+
+    for n, text in enumerate(pages_text, start=1):
+        page = _parse_page(text)
+        if page is None:
+            warnings.append(f"Página {n}: no se encontró el número de PikTik; se omitió.")
+            continue
+        company = company or page["company"]
+        order = orders.setdefault(
+            page["piktik"],
+            {
+                "piktik": page["piktik"],
+                "po": page["po"],
+                "cust_no": page["cust_no"],
+                "ship_to_dc": page["ship_to_dc"],
+                "destination": page["destination"],
+                "pages": 0,
+                "declared_cases": None,
+                "items": [],
+            },
+        )
+        order["pages"] += 1
+        for campo in ("po", "cust_no", "ship_to_dc", "destination"):
+            if not order[campo] and page[campo]:
+                order[campo] = page[campo]
+        if page["declared_cases"] is not None:
+            order["declared_cases"] = page["declared_cases"]
+        order["items"].extend(page["items"])
+
+    result_orders = list(orders.values())
+    for o in result_orders:
+        _desambiguar_skus(o["items"])
+        if not o["po"]:
+            warnings.append(f"PikTik {o['piktik']}: no se pudo leer la PO.")
+        if not o["ship_to_dc"]:
+            warnings.append(f"PikTik {o['piktik']}: no se pudo leer el DC de destino.")
+        if not o["items"]:
+            warnings.append(f"PikTik {o['piktik']}: no se encontraron líneas de producto.")
+        for it in o["items"]:
+            if it["qty"] <= 0:
+                warnings.append(f"PikTik {o['piktik']}, {it['sku']}: cantidad de cartones no detectada.")
+        suma = sum(it["qty"] for it in o["items"])
+        if o["declared_cases"] is not None and suma != o["declared_cases"]:
+            warnings.append(
+                f"PikTik {o['piktik']}: suma de cartones ({suma}) distinta del TOTAL declarado "
+                f"({o['declared_cases']})."
+            )
+
+    if not result_orders:
+        raise ValueError("No se detectó ningún PikTik en el PDF.")
 
     return {
-        "company": company,
-        "cust_no": cust_no,
-        "piktik": piktik_str,
-        "po": po_str,
-        "items": items
+        "company": company or "",
+        "cust_no": result_orders[0]["cust_no"],
+        "orders": result_orders,
+        "warnings": warnings,
     }

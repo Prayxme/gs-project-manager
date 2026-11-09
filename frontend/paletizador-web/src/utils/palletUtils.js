@@ -1,3 +1,6 @@
+// Clave de color: PO + SKU. El color identifica la mercancía de UNA orden.
+export const colorKey = (po, sku) => `${po || ''}|${(sku || '').trim()}`;
+
 export const agruparPallets = (pallets) => {
   const grupos = {};
 
@@ -9,13 +12,17 @@ export const agruparPallets = (pallets) => {
     });
 
     cajasHuella.sort();
-    const huellaDigital = cajasHuella.join('##');
+    // La PO/DC forma parte de la huella: pallets idénticos de órdenes distintas
+    // no se agrupan, para conservar la trazabilidad.
+    const huellaDigital = `${pallet.ship_to_dc || ''}@@${pallet.po || ''}@@${cajasHuella.join('##')}`;
 
     if (!grupos[huellaDigital]) {
       grupos[huellaDigital] = {
         count: 0,
         cantidad: 0,
         pallet: pallet,
+        po: pallet.po || '',
+        dc: pallet.ship_to_dc || '',
       };
     }
     grupos[huellaDigital].count += 1;

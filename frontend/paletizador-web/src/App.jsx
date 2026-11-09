@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { I18N } from './constants/i18n';
-import { SKU_PALETTE } from './constants/palette';
+import { colorPorIndice } from './constants/palette';
 import { LOGISTICS_DEFAULTS } from './constants/logisticsConfig';
 import { parsePdfTicket, packOrder } from './services/palletApi';
-import { agruparPallets, calculateCenteredOffsets } from './utils/palletUtils';
+import { agruparPallets, calculateCenteredOffsets, colorKey } from './utils/palletUtils';
 
 import Navbar from './components/ui/Navbar';
 import Sidebar from './components/ui/Sidebar';
@@ -32,13 +32,14 @@ export default function App() {
   const [orderInfo, setOrderInfo] = useState({ po: "", piktik: "", company: "", custNo: "" });
   const [itemsForm, setItemsForm] = useState([{ width: 0, length: 0, height: 0, weight: 0, qty: 0, sku: "" }]);
 
-  // Asignar colores indexados únicos a cada fila del formulario
+  // Un color único por combinación PO + SKU: el mismo SKU en dos POs distintas
+  // recibe colores distintos, y ningún color se repite entre POs.
   const skuColorMap = useMemo(() => {
     const map = {};
     itemsForm.forEach((item, idx) => {
-      const cleanSku = item.sku?.trim() || `SKU-${idx + 1}`;
-      if (!map[cleanSku]) {
-        map[cleanSku] = SKU_PALETTE[Object.keys(map).length % SKU_PALETTE.length];
+      const key = colorKey(item.po, item.sku?.trim() || `ITEM-${idx + 1}`);
+      if (!map[key]) {
+        map[key] = colorPorIndice(Object.keys(map).length);
       }
     });
     return map;
@@ -48,9 +49,7 @@ export default function App() {
   const agregarItem = () =>
     setItemsForm([...itemsForm, { width: 0, length: 0, height: 0, weight: 0, qty: 0, sku: "" }]);
   const actualizarItem = (idx, campo, valor) => {
-    const nuevos = [...itemsForm];
-    nuevos[idx][campo] = valor;
-    setItemsForm(nuevos);
+    setItemsForm(itemsForm.map((item, i) => (i === idx ? { ...item, [campo]: valor } : item)));
   };
   const eliminarItem = (idx) => setItemsForm(itemsForm.filter((_, i) => i !== idx));
 
@@ -72,23 +71,32 @@ export default function App() {
     }
   };
 
+  // Una línea del formulario por cada SKU de cada PikTik; conserva PO/PikTik/DC
+  // para que el motor nunca mezcle órdenes distintas en un mismo pallet.
   const aplicarDatosPDF = () => {
+    const orders = pdfParsedData.orders || [];
     setOrderInfo({
-      po: pdfParsedData.po,
-      piktik: pdfParsedData.piktik,
+      po: orders.map((o) => o.po).join(", "),
+      piktik: orders.map((o) => o.piktik).join(", "),
       company: pdfParsedData.company,
       custNo: pdfParsedData.cust_no,
     });
     setItemsForm(
-      pdfParsedData.items.map((item, idx) => ({
-        sku: item.sku || `ITEM-${idx + 1}`,
-        qty: item.qty,
-        length: item.l,
-        width: item.w,
-        height: item.h,
-        weight: item.weight,
-      }))
+      orders.flatMap((order) =>
+        order.items.map((item, idx) => ({
+          sku: item.sku || `ITEM-${idx + 1}`,
+          qty: item.qty,
+          length: item.l,
+          width: item.w,
+          height: item.h,
+          weight: item.weight,
+          po: order.po,
+          piktik: order.piktik,
+          dc: order.ship_to_dc,
+        }))
+      )
     );
+    setGruposPallets([]);
     setShowPdfModal(false);
   };
 
@@ -102,18 +110,23 @@ export default function App() {
         width_in: LOGISTICS_DEFAULTS.PALLET_WIDTH,
         base_height_in: LOGISTICS_DEFAULTS.PALLET_BASE_HEIGHT,
         max_total_height_in: LOGISTICS_DEFAULTS.MAX_TOTAL_HEIGHT,
-        max_weight_lbs: LOGISTICS_DEFAULTS.MAX_PALLET_WEIGHT,
+        // Sin max_weight_lbs: el límite de peso por pallet aún no es regla de negocio.
       },
-      items: itemsForm.map((i, idx) => ({
-        sku: i.sku || `ITEM-${idx + 1}`,
-        quantity: Number(i.qty),
-        dimensions: {
-          length_in: Number(i.length),
-          width_in: Number(i.width),
-          height_in: Number(i.height),
-        },
-        weight_lbs: Number(i.weight),
-      })),
+      items: itemsForm
+        .filter((i) => Number(i.qty) > 0)
+        .map((i, idx) => ({
+          sku: i.sku || `ITEM-${idx + 1}`,
+          quantity: Number(i.qty),
+          dimensions: {
+            length_in: Number(i.length),
+            width_in: Number(i.width),
+            height_in: Number(i.height),
+          },
+          weight_lbs: Number(i.weight),
+          po: i.po || null,
+          piktik: i.piktik || null,
+          ship_to_dc: i.dc || null,
+        })),
     };
 
     try {
@@ -121,6 +134,13 @@ export default function App() {
       if (data && data.pallets && data.pallets.length > 0) {
         setGruposPallets(agruparPallets(data.pallets));
         setGrupoSeleccionadoIdx(0);
+        if (data.unplaced_boxes > 0) {
+          alert(
+            lang === "es"
+              ? `Atención: ${data.unplaced_boxes} cajas no pudieron colocarse (no caben en el pallet).`
+              : `Warning: ${data.unplaced_boxes} boxes could not be placed (they do not fit on the pallet).`
+          );
+        }
       } else {
         alert(lang === "es" ? "No se pudieron generar pallets con estos parámetros." : "No pallets generated with these parameters.");
       }

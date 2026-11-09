@@ -1,170 +1,202 @@
-from decimal import Decimal
-from typing import List, Tuple, Dict, Any
+"""
+Reglas físicas del pallet, independientes de cualquier librería de empaque.
+
+Sistema de coordenadas (pulgadas, origen en la esquina del pallet):
+  x = ancho del pallet (40), z = largo del pallet (48), y = altura sobre la base.
+
+Reglas:
+  - Impenetrabilidad (AABB): ninguna caja atraviesa a otra.
+  - Dentro de límites: 0 <= x+w <= W, 0 <= z+d <= D, y+h <= H útil.
+  - Soporte basal >= 65 % (o apoyada directamente en el piso del pallet).
+  - Peso: una caja no descansa sobre cajas más livianas (lo pesado va abajo).
+  - Centro de gravedad horizontal dentro del 15 % del centro (alerta).
+"""
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
 from app.core.config import (
+    EPSILON_SOLAPE,
     TOLERANCIA_ALTURA_SOPORTE,
-    UMBRAL_MINIMO_SOPORTE,
     TOLERANCIA_DESBALANCE_COG,
+    UMBRAL_MINIMO_SOPORTE,
 )
 
-def aplicar_gravedad(b_items: list, max_h_util: float = 79.5, min_support_pct: float = 0.65) -> list:
-    """
-    Gravedad física estricta:
-    1. Ordena cajas de abajo hacia arriba.
-    2. Hace descender cada caja hasta el obstáculo más alto debajo de su huella.
-    3. Descarta cualquier caja que sobrepase el techo útil o no tenga soporte sólido (>=65%).
-    """
-    b_items.sort(key=lambda item: float(item.position[1]))
-    items_asentados = []
-    
-    for caja in b_items:
-        pos_x = float(caja.position[0])
-        pos_z = float(caja.position[2])
-        w, h, d = [float(val) for val in caja.get_dimension()]
-        area_base = w * d
-        
-        # Encontrar el techo más alto debajo de la base de esta caja
-        max_y_obstaculo = 0.0
-        for otra in items_asentados:
-            ox = float(otra.position[0])
-            oz = float(otra.position[2])
-            ow, _, od = [float(val) for val in otra.get_dimension()]
-            
-            # Chequeo de solapamiento en el plano X-Z
-            if (pos_x < ox + ow - 0.05) and (pos_x + w > ox + 0.05):
-                if (pos_z < oz + od - 0.05) and (pos_z + d > oz + 0.05):
-                    techo = float(otra.position[1]) + float(otra.get_dimension()[1])
-                    if techo > max_y_obstaculo:
-                        max_y_obstaculo = techo
-                        
-        altura_asiento = max_y_obstaculo
-        
-        # Medir área real de apoyo
-        if altura_asiento <= 0.1:
-            soporte_pct = 1.0  # Suelo del pallet
-        else:
-            area_soporte = 0.0
-            for otra in items_asentados:
-                y_techo = float(otra.position[1]) + float(otra.get_dimension()[1])
-                if abs(y_techo - altura_asiento) < 0.15:
-                    ox = float(otra.position[0])
-                    oz = float(otra.position[2])
-                    ow, _, od = [float(val) for val in otra.get_dimension()]
-                    
-                    ix_izq = max(pos_x, ox)
-                    ix_der = min(pos_x + w, ox + ow)
-                    iz_front = max(pos_z, oz)
-                    iz_tras = min(pos_z + d, oz + od)
-                    
-                    if ix_der > ix_izq and iz_tras > iz_front:
-                        area_soporte += (ix_der - ix_izq) * (iz_tras - iz_front)
-            soporte_pct = area_soporte / area_base if area_base > 0 else 0.0
+EPS = 1e-6  # holgura numérica de punto flotante en comparaciones de límites
 
-        # CONDICIÓN ESTRICTA: Solo se conserva si tiene soporte y no rompe el techo
-        if soporte_pct >= min_support_pct:
-            if altura_asiento + h <= max_h_util + 0.1:
-                caja.position[1] = Decimal(str(round(altura_asiento, 2)))
-                items_asentados.append(caja)
 
-    b_items.clear()
-    b_items.extend(items_asentados)
-    return b_items
+@dataclass
+class PlacedBox:
+    sku: str
+    x: float
+    y: float
+    z: float
+    w: float   # extensión en x
+    h: float   # extensión en y
+    d: float   # extensión en z
+    weight: float
+    po: str = ""
+    piktik: str = ""
+    dc: str = ""
+    alto_orig: float = 0.0  # alto declarado de la caja (para preferir orientación "de pie")
 
-def calcular_area_interseccion(caja_arriba, caja_abajo) -> float:
-    x1_arriba, _, z1_arriba = [float(val) for val in caja_arriba.position]
-    w_arriba, _, d_arriba = [float(val) for val in caja_arriba.get_dimension()]
-    x2_arriba, z2_arriba = x1_arriba + w_arriba, z1_arriba + d_arriba
+    @property
+    def x2(self) -> float:
+        return self.x + self.w
 
-    x1_abajo, _, z1_abajo = [float(val) for val in caja_abajo.position]
-    w_abajo, _, d_abajo = [float(val) for val in caja_abajo.get_dimension()]
-    x2_abajo, z2_abajo = x1_abajo + w_abajo, z1_abajo + d_abajo
+    @property
+    def z2(self) -> float:
+        return self.z + self.d
 
-    ix_izq, ix_der = max(x1_arriba, x1_abajo), min(x2_arriba, x2_abajo)
-    iz_front, iz_tras = max(z1_arriba, z1_abajo), min(z2_arriba, z2_abajo)
+    @property
+    def top(self) -> float:
+        return self.y + self.h
 
-    if ix_der > ix_izq and iz_tras > iz_front:
-        return (ix_der - ix_izq) * (iz_tras - iz_front)
-    return 0.0
+    def copy(self) -> "PlacedBox":
+        return PlacedBox(self.sku, self.x, self.y, self.z, self.w, self.h, self.d,
+                         self.weight, self.po, self.piktik, self.dc, self.alto_orig)
 
-def analizar_soporte(b_items: list) -> List[Dict[str, str]]:
-    warnings = []
-    for caja in b_items:
-        pos_y = float(caja.position[1])
-        w, _, d = [float(val) for val in caja.get_dimension()]
-        if pos_y <= TOLERANCIA_ALTURA_SOPORTE:
-            continue
-            
-        area_base = w * d
-        area_soportada = 0.0
-        for otra in b_items:
-            y_ab = float(otra.position[1])
-            _, h_ab, _ = [float(val) for val in otra.get_dimension()]
-            if abs((y_ab + h_ab) - pos_y) <= TOLERANCIA_ALTURA_SOPORTE:
-                area_soportada += calcular_area_interseccion(caja, otra)
 
-        pct = area_soportada / area_base if area_base > 0 else 1.0
-        if pct < UMBRAL_MINIMO_SOPORTE:
-            sku_limpio = caja.name.split('###')[0]
-            warnings.append({
-                "sku": sku_limpio, 
-                "mensaje": f"Soporte bajo en {sku_limpio}: {round(pct * 100, 1)}% apoyado."
-            })
-    return warnings
+def _solape_1d(a1: float, a2: float, b1: float, b2: float) -> float:
+    return min(a2, b2) - max(a1, b1)
 
-def analizar_equilibrio(b_items: list, pallet_w: float = 40.0, pallet_l: float = 48.0) -> Tuple[Dict[str, float], str, List[str]]:
-    total_w, sum_x, sum_z = 0.0, 0.0, 0.0
-    for item in b_items:
-        peso = float(item.weight)
-        fw, _, fd = [float(val) for val in item.get_dimension()]
-        px, _, pz = [float(val) for val in item.position]
-        sum_x += (px + fw / 2.0) * peso
-        sum_z += (pz + fd / 2.0) * peso
-        total_w += peso
 
-    if total_w == 0:
+def altura_asiento(boxes: List[PlacedBox], x: float, z: float, w: float, d: float) -> float:
+    """Techo más alto debajo de la huella (x, z, w, d); 0 si no hay obstáculos."""
+    y = 0.0
+    for b in boxes:
+        if _solape_1d(x, x + w, b.x, b.x2) > EPSILON_SOLAPE and _solape_1d(z, z + d, b.z, b.z2) > EPSILON_SOLAPE:
+            if b.top > y:
+                y = b.top
+    return y
+
+
+def soporte(
+    boxes: List[PlacedBox], x: float, y: float, z: float, w: float, d: float
+) -> Tuple[float, List[PlacedBox]]:
+    """(ratio de soporte basal, cajas que lo proporcionan)."""
+    if y <= TOLERANCIA_ALTURA_SOPORTE:
+        return 1.0, []
+    area = 0.0
+    apoyos: List[PlacedBox] = []
+    for b in boxes:
+        if abs(b.top - y) <= TOLERANCIA_ALTURA_SOPORTE:
+            ix = _solape_1d(x, x + w, b.x, b.x2)
+            iz = _solape_1d(z, z + d, b.z, b.z2)
+            if ix > 0 and iz > 0:
+                area += ix * iz
+                apoyos.append(b)
+    base = w * d
+    return (area / base if base > 0 else 0.0), apoyos
+
+
+def puede_colocar(
+    boxes: List[PlacedBox],
+    x: float, y: float, z: float, w: float, h: float, d: float,
+    weight: float,
+    W: float, D: float, H: float,
+    peso_max: Optional[float] = None,
+) -> bool:
+    if x < -EPS or z < -EPS or x + w > W + EPS or z + d > D + EPS or y + h > H + EPS:
+        return False
+    if peso_max is not None and sum(b.weight for b in boxes) + weight > peso_max + EPS:
+        return False
+    ratio, apoyos = soporte(boxes, x, y, z, w, d)
+    if ratio < UMBRAL_MINIMO_SOPORTE - EPS:
+        return False
+    # Lo pesado va abajo: nunca sobre una caja más liviana.
+    return all(weight <= a.weight + EPS for a in apoyos)
+
+
+def validar_pallet(
+    boxes: List[PlacedBox], W: float, D: float, H: float, peso_max: Optional[float] = None
+) -> List[str]:
+    """Verificación independiente de un pallet terminado. Lista vacía = válido."""
+    errores: List[str] = []
+    for i, b in enumerate(boxes):
+        if b.x < -EPS or b.z < -EPS or b.y < -EPS or b.x2 > W + EPS or b.z2 > D + EPS or b.top > H + EPS:
+            errores.append(f"{b.sku}#{i}: fuera de los límites del pallet")
+        for j in range(i + 1, len(boxes)):
+            o = boxes[j]
+            if (_solape_1d(b.x, b.x2, o.x, o.x2) > EPSILON_SOLAPE
+                    and _solape_1d(b.z, b.z2, o.z, o.z2) > EPSILON_SOLAPE
+                    and _solape_1d(b.y, b.top, o.y, o.top) > EPSILON_SOLAPE):
+                errores.append(f"{b.sku}#{i} y {o.sku}#{j}: se atraviesan")
+        ratio, apoyos = soporte([o for o in boxes if o is not b], b.x, b.y, b.z, b.w, b.d)
+        if ratio < UMBRAL_MINIMO_SOPORTE - EPS:
+            errores.append(f"{b.sku}#{i}: soporte {ratio:.0%} < {UMBRAL_MINIMO_SOPORTE:.0%}")
+        if any(b.weight > a.weight + EPS for a in apoyos):
+            errores.append(f"{b.sku}#{i}: descansa sobre una caja más liviana")
+    if peso_max is not None and sum(b.weight for b in boxes) > peso_max + EPS:
+        errores.append("peso total excede el máximo del pallet")
+    return errores
+
+
+def analizar_equilibrio(
+    boxes: List[PlacedBox], pallet_w: float, pallet_l: float
+) -> Tuple[Dict[str, float], str, List[str]]:
+    total = sum(b.weight for b in boxes)
+    if total <= 0:
         return {"x": 0.0, "z": 0.0}, "VACIA", []
-
-    cog_x, cog_z = sum_x / total_w, sum_z / total_w
-    ideal_x, ideal_z = pallet_w / 2.0, pallet_l / 2.0
-    warnings = []
+    cog_x = sum(b.weight * (b.x + b.w / 2.0) for b in boxes) / total
+    cog_z = sum(b.weight * (b.z + b.d / 2.0) for b in boxes) / total
+    warnings: List[str] = []
     status = "ESTABLE"
-
-    if abs(cog_x - ideal_x) > (pallet_w * TOLERANCIA_DESBALANCE_COG):
-        status, warnings = "INESTABLE", warnings + [f"Desbalance lateral (CoG X: {cog_x:.1f} in)."]
-    if abs(cog_z - ideal_z) > (pallet_l * TOLERANCIA_DESBALANCE_COG):
-        status, warnings = "INESTABLE", warnings + [f"Desbalance frontal (CoG Z: {cog_z:.1f} in)."]
-
+    if abs(cog_x - pallet_w / 2.0) > pallet_w * TOLERANCIA_DESBALANCE_COG:
+        status = "INESTABLE"
+        warnings.append(f"Desbalance lateral (CoG X: {cog_x:.1f} in).")
+    if abs(cog_z - pallet_l / 2.0) > pallet_l * TOLERANCIA_DESBALANCE_COG:
+        status = "INESTABLE"
+        warnings.append(f"Desbalance frontal (CoG Z: {cog_z:.1f} in).")
     return {"x": round(cog_x, 2), "z": round(cog_z, 2)}, status, warnings
 
-def construir_pallet_dict(bin_obj, config, pallet_id_str: str) -> Dict[str, Any]:
+
+def construir_pallet_dict(
+    boxes: List[PlacedBox], config: Any, pallet_id: str, po: str = "", dc: str = ""
+) -> Dict[str, Any]:
+    """Serializa un pallet para el frontend. Coordenadas y dimensiones a 1 decimal
+    (evita huellas duplicadas por coma flotante). 'y' incluye la altura de la base."""
     net_height = float(config.max_total_height_in - config.base_height_in)
-    
-    # Asentar la carga físicamente
-    aplicar_gravedad(bin_obj.items, max_h_util=net_height)
+    cog, status_eq, warn_eq = analizar_equilibrio(boxes, config.width_in, config.length_in)
+    vol_cajas = sum(b.w * b.h * b.d for b in boxes)
+    vol_util = config.width_in * config.length_in * net_height
+    base_h = float(config.base_height_in)
 
-    cog, status_eq, warn_eq = analizar_equilibrio(bin_obj.items, config.width_in, config.length_in)
-    warn_sop = analizar_soporte(bin_obj.items)
+    ordenadas = sorted(boxes, key=lambda b: (round(b.y, 3), round(b.z, 3), round(b.x, 3)))
+    placed = []
+    for idx, b in enumerate(ordenadas):
+        placed.append({
+            "step_order": idx + 1,
+            "sku": b.sku,
+            "po": b.po,
+            "piktik": b.piktik,
+            "ship_to_dc": b.dc,
+            "weight_lbs": round(b.weight, 3),
+            "position": {"x": round(b.x, 1), "y": round(b.y + base_h, 1), "z": round(b.z, 1)},
+            "rendered_dimensions": {
+                "width_in": round(b.w, 1), "height_in": round(b.h, 1), "length_in": round(b.d, 1)
+            },
+        })
 
-    pallet_data = {
-        "pallet_id": pallet_id_str,
+    skus: Dict[str, int] = {}
+    for b in boxes:
+        skus[b.sku] = skus.get(b.sku, 0) + 1
+    altura = max((b.top for b in boxes), default=0.0)
+
+    return {
+        "pallet_id": pallet_id,
+        "po": po,
+        "ship_to_dc": dc,
+        "pallet_type": "HOMOGENEO" if len(skus) == 1 else "MIXTO",
         "metrics": {
-            "total_weight_lbs": round(sum(float(item.weight) for item in bin_obj.items), 2),
-            "boxes_count": len(bin_obj.items),
+            "total_weight_lbs": round(sum(b.weight for b in boxes), 2),
+            "boxes_count": len(boxes),
+            "sku_breakdown": skus,
+            "volume_utilization_pct": round(100.0 * vol_cajas / vol_util, 1) if vol_util > 0 else 0.0,
+            "max_height_in": round(altura + base_h, 1),
             "balance_status": status_eq,
             "center_of_gravity": cog,
-            "voladizos_peligrosos": len(warn_sop),
-            "alertas": warn_eq + [w["mensaje"] for w in warn_sop]
+            "voladizos_peligrosos": 0,
+            "alertas": warn_eq,
         },
-        "placed_items": []
+        "placed_items": placed,
     }
-
-    base_h = float(config.base_height_in)
-    for idx, item in enumerate(bin_obj.items):
-        fw, fh, fd = [float(v) for v in item.get_dimension()]
-        px, py, pz = [float(v) for v in item.position]
-        pallet_data["placed_items"].append({
-            "step_order": idx + 1,
-            "sku": item.name.split('###')[0],
-            "position": {"x": round(px, 1), "y": round(py + base_h, 1), "z": round(pz, 1)},
-            "rendered_dimensions": {"width_in": round(fw, 1), "height_in": round(fh, 1), "length_in": round(fd, 1)}
-        })
-    return pallet_data
