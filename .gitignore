@@ -20,6 +20,7 @@ ENV/
 
 # Variables de entorno y logs
 .env
+.env.example
 *.log
 
 # Editores y SO
