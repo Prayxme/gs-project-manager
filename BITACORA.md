@@ -12,7 +12,31 @@ Formato: fecha · qué se hizo · por qué · cómo se verificó · pendiente.
 - Soporte basal mínimo 65 %; sin colisiones; todo dentro de los límites del pallet.
 - PDF: una página por PikTik (o varias si hay muchos SKU). PikTik = id interno; PO = orden del cliente; cada PikTik tiene 1 PO y 1 destino (DC).
 
+## Estructura actual (desde v0.10.0)
+```
+backend/app/
+  main.py                      → incluye un router por módulo
+  core/config.py               → configuración global (nombre, versión, CORS)
+  modules/palletizer/          → router.py, schemas.py, config.py, services/
+backend/tests/palletizer/      → pruebas del módulo
+frontend/gs-project-manager/src/
+  app/                         → shell: rutas, inicio, registro de módulos (modules.js), idioma/tema
+  shared/                      → Navbar, tema, URL del API
+  modules/palletizer/          → página, componentes, servicios, utilidades del paletizador
+  modules/open-orders/         → (en construcción)
+```
+Agregar un módulo: carpeta en `frontend/.../modules/<id>/` + entrada en `app/modules.js` + textos en `app/i18n.js`;
+en backend `app/modules/<id>/router.py` incluido en `main.py` con prefijo `/api/<id>`.
+
 ## Registro
+
+### 2026-11-09 · Plataforma modular "Golden State Project Manager - Wiesner" (v0.10.0)
+- Renombrado: `frontend/paletizador-web` → `frontend/gs-project-manager` (con `git mv`, historial conservado). Títulos de app y API actualizados.
+- Frontend convertido en shell con React Router (`react-router-dom` 7): inicio con tarjetas de módulos (`/`), Paletizador (`/palletizer`), Órdenes abiertas (`/open-orders`, en construcción). Idioma y tema globales, recordados en el navegador.
+- Backend reorganizado por módulo; endpoints movidos a `/api/palletizer/parse-pdf` y `/api/palletizer/pack` (las rutas viejas `/api/pack` ya no existen).
+- Corregido: el cliente API leía el cuerpo de la respuesta dos veces en errores. Lint del frontend limpio (antes 8 errores).
+- Verificado: 28 pruebas pasan, `npm run build` OK, `npm run lint` OK, flujo PDF → pack por API OK. Pendiente: revisión visual en navegador.
+- `.claude/settings.local.json` fuera de Git.
 
 ### 2026-11-09 · Legibilidad del sidebar
 - Fuentes del sidebar más grandes (etiquetas 9-10px → 11-12px, campos → 14px); PO/DC de cada SKU como etiqueta visible. Sidebar 390 → 420px. Build OK.
