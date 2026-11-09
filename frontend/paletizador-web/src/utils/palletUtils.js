@@ -1,18 +1,34 @@
-export function agruparPallets(palletsArray) {
-  const grupos = [];
-  palletsArray.forEach((pallet) => {
-    const firma = JSON.stringify(
-      pallet.placed_items.map((i) => ({ sku: i.sku, pos: i.position }))
-    );
-    const grupoExistente = grupos.find((g) => g.firma === firma);
-    if (grupoExistente) {
-      grupoExistente.cantidad += 1;
-    } else {
-      grupos.push({ firma, cantidad: 1, data: pallet });
+export const agruparPallets = (pallets) => {
+  const grupos = {};
+
+  pallets.forEach((pallet) => {
+    const cajasHuella = pallet.placed_items.map(item => {
+      const p = item.position || { x: 0, y: 0, z: 0 };
+      const d = item.rendered_dimensions || { width_in: 0, height_in: 0, length_in: 0 };
+      return `${item.sku}|${Number(p.x).toFixed(1)}|${Number(p.y).toFixed(1)}|${Number(p.z).toFixed(1)}|${Number(d.width_in).toFixed(1)}|${Number(d.height_in).toFixed(1)}|${Number(d.length_in).toFixed(1)}`;
+    });
+
+    cajasHuella.sort();
+    const huellaDigital = cajasHuella.join('##');
+
+    if (!grupos[huellaDigital]) {
+      grupos[huellaDigital] = {
+        count: 0,
+        cantidad: 0,
+        pallet: pallet,
+      };
     }
+    grupos[huellaDigital].count += 1;
+    grupos[huellaDigital].cantidad += 1;
   });
-  return grupos;
-}
+
+  const arrayOrdenado = Object.values(grupos).sort((a, b) => b.count - a.count);
+
+  return arrayOrdenado.map((grupo, index) => ({
+    ...grupo,
+    layoutId: `Layout ${String.fromCharCode(65 + index)}`
+  }));
+};
 
 export function calculateCenteredOffsets(palletData, palletWidth = 40, palletLength = 48) {
   if (!palletData || !palletData.placed_items.length) {

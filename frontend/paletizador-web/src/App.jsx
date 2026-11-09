@@ -131,10 +131,9 @@ export default function App() {
     }
   };
 
-  // Métricas y Lógica de Negocio
   const grupoActivo = gruposPallets[grupoSeleccionadoIdx];
-  const palletData = grupoActivo?.data;
-  const totalPalletsGenerados = gruposPallets.reduce((acc, curr) => acc + curr.cantidad, 0);
+  const palletData = grupoActivo?.pallet; // Cambiado de 'data' a 'pallet' para que coincida con tu util
+  const totalPalletsGenerados = gruposPallets.reduce((acc, curr) => acc + curr.count, 0); // Cambiado de 'cantidad' a 'count'
 
   const totalCubeFeet = totalPalletsGenerados * LOGISTICS_DEFAULTS.CFT_POR_PALLET;
   const numRTs = Math.ceil(totalCubeFeet / LOGISTICS_DEFAULTS.MAX_CFT_POR_RT);
