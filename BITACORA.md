@@ -39,7 +39,6 @@ en backend `app/modules/<id>/router.py` incluido en `main.py` con prefijo `/api/
 - `app/core/database.py`: conexión compartida (SQLAlchemy 2 + psycopg 3) desde `DATABASE_URL` en `.env`.
 - Cada módulo usa su propio *schema* PostgreSQL (`open_orders.*`). Estructura versionada con **Alembic** (`backend/migrations`, migración `0001_open_orders`).
 - Se eliminó la base SQLite temporal. Las pruebas usan SQLite en memoria con el mismo código; producción usa PostgreSQL.
-- Pendiente: el usuario crea la base y el usuario en PostgreSQL, completa `DATABASE_URL`; luego `alembic upgrade head`, primera sincronización e importación del CSV histórico.
 - Nota: el commit "fixing" del usuario eliminó `backend/.env.example` del repo; se recreó (solo plantilla, sin valores).
 
 ### 2026-11-09 · Módulo Monitor de Órdenes Abiertas / Routing Wiesner (v0.11.0)
