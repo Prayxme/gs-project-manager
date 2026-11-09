@@ -28,6 +28,11 @@ ENV/
 .DS_Store
 Thumbs.db
 claude.md
+BITACORDA.md
 
 # Configuración local de Claude Code
 .claude/settings.local.json
+
+# Datos locales (base de datos SQLite)
+backend/data/
+*.db

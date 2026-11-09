@@ -30,6 +30,21 @@ en backend `app/modules/<id>/router.py` incluido en `main.py` con prefijo `/api/
 
 ## Registro
 
+### 2026-11-09 · Módulo Monitor de Órdenes Abiertas / Routing Wiesner (v0.11.0)
+- Porta el Google Apps Script (scraper de wpinyweb.com) a `backend/app/modules/open_orders/` + `frontend/.../modules/open-orders/`.
+- **Solo lectura del portal:** únicamente `ajcmd_show_list` (esa página también permite escribir routing). Credenciales SOLO en `backend/.env` (plantilla `.env.example`).
+- **Primera base de datos:** SQLite en `backend/data/gs.db` (fuera de Git): órdenes actuales, historial de eventos con hora, órdenes cerradas, bitácora de actualizaciones.
+- **Reglas:** ventana por cliente (BURL −5 días naturales/no antes del Ship; ROSS/DDSD ship−21; MACY ship−7; resto Cancel), estados OVERDUE/LAST DAY/ATTENTION(≤3)/SAFE/TOO EARLY/ROUTED.
+  "Hoy" = fecha del navegador del usuario; reloj en vivo con hora de California en la página.
+- **Errores del Apps Script corregidos:** historial duplicado cada 5 min; KPIs "hoy" que no eran de hoy; tabla vacía marcaba todo como cancelado (ahora se aborta y se conserva la foto);
+  solo 1 cambio por corrida (ahora todos); día de menos por cambio de horario; cliente `S&JS` leído como `S`;
+  `LOAD ID # 123`, `Load ID : 123`, cargas CITI y guías FedEx se trataban como routing → salían como "REMOVED" en vez de "SHIPPED".
+- **Formatos Cfrm vistos en el portal real:** cita = CS…, LOAD ID…, CT…, tracking/guía ≥10 dígitos; routing = RTS…, REF#…, D…, PJ#…, 6–9 dígitos (BURL/NEWT, sin cita). POR CONFIRMAR con el usuario.
+- **Actualización:** botón manual + casilla "Auto cada 5 min" (corre en el backend mientras esté encendido). Importación del histórico `ROUTING_COMPLETED` por CSV desde la pestaña "Cerradas".
+- **Verificado:** conexión real OK (535 órdenes leídas, primera sincronización hecha). 80 pruebas pasan. Build y lint OK.
+- **Importante:** el backend debe correr con el venv (`backend\venv\Scripts\python -m uvicorn ...`); el Python global no tiene httpx/tzdata/dotenv.
+- **Pendiente:** importar el CSV del histórico (lo hace el usuario con el botón); revisión visual; el Google Sheet queda como respaldo.
+
 ### 2026-11-09 · Plataforma modular "Golden State Project Manager - Wiesner" (v0.10.0)
 - Renombrado: `frontend/paletizador-web` → `frontend/gs-project-manager` (con `git mv`, historial conservado). Títulos de app y API actualizados.
 - Frontend convertido en shell con React Router (`react-router-dom` 7): inicio con tarjetas de módulos (`/`), Paletizador (`/palletizer`), Órdenes abiertas (`/open-orders`, en construcción). Idioma y tema globales, recordados en el navegador.

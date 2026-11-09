@@ -16,7 +16,7 @@ export const MODULES = [
     id: "open-orders",
     path: "/open-orders",
     icon: "📋",
-    status: "soon",
+    status: "active",
     component: lazy(() => import("../modules/open-orders/OpenOrdersPage")),
   },
 ];
