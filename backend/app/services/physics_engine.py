@@ -8,8 +8,9 @@ from app.core.config import (
 
 def aplicar_gravedad(b_items: list, max_h_util: float = 79.5) -> list:
     """
-    Aplica gravedad física estable a las cajas.
-    Garantiza que ninguna caja flote en el aire y que ninguna sobrepase la altura máxima permitida.
+    Aplica gravedad física estable. 
+    Una caja solo se detiene en un nivel si al menos el 65% de su área base 
+    está efectivamente apoyada sobre cajas inferiores sólidas o sobre el piso.
     """
     b_items.sort(key=lambda item: float(item.position[1]))
     items_validos = []
@@ -19,27 +20,48 @@ def aplicar_gravedad(b_items: list, max_h_util: float = 79.5) -> list:
         pos_x = float(caja.position[0])
         pos_z = float(caja.position[2])
         w, h, d = [float(val) for val in caja.get_dimension()]
+        area_base = w * d
         
-        max_y_debajo = 0.0
-        for j in range(len(items_validos)):
-            otra = items_validos[j]
-            ox = float(otra.position[0])
-            oy = float(otra.position[1])
-            oz = float(otra.position[2])
-            ow, oh, od = [float(val) for val in otra.get_dimension()]
+        # Recolectar todos los techos posibles debajo de la caja
+        alturas_potenciales = {0.0}  # El suelo siempre es una opción
+        for otra in items_validos:
+            alturas_potenciales.add(float(otra.position[1]) + float(otra.get_dimension()[1]))
             
-            # Verificar si hay solapamiento en el plano horizontal X-Z con tolerancia
-            superpone_x = (pos_x < ox + ow - 0.2) and (pos_x + w > ox + 0.2)
-            superpone_z = (pos_z < oz + od - 0.2) and (pos_z + d > oz + 0.2)
-            
-            if superpone_x and superpone_z:
-                techo = oy + oh
-                if techo > max_y_debajo:
-                    max_y_debajo = techo
+        # Probar desde el techo más alto hacia abajo hasta encontrar un soporte real
+        alturas_ordenadas = sorted(list(alturas_potenciales), reverse=True)
+        altura_final = 0.0
+        
+        for y_candidato in alturas_ordenadas:
+            if y_candidato == 0.0:
+                altura_final = 0.0
+                break
+                
+            # Calcular cuánta área de soporte real tiene a este nivel
+            area_soporte = 0.0
+            for otra in items_validos:
+                y_otra_techo = float(otra.position[1]) + float(otra.get_dimension()[1])
+                # Si la caja de abajo coincide con este nivel de apoyo
+                if abs(y_otra_techo - y_candidato) < 0.1:
+                    ox = float(otra.position[0])
+                    oz = float(otra.position[2])
+                    ow, _, od = [float(val) for val in otra.get_dimension()]
                     
-        # Confinar la caja dentro del límite útil del pallet
-        if max_y_debajo + h <= max_h_util + 0.5:
-            caja.position[1] = Decimal(str(round(max_y_debajo, 2)))
+                    ix_izq = max(pos_x, ox)
+                    ix_der = min(pos_x + w, ox + ow)
+                    iz_front = max(pos_z, oz)
+                    iz_tras = min(pos_z + d, oz + od)
+                    
+                    if ix_der > ix_izq and iz_tras > iz_front:
+                        area_soporte += (ix_der - ix_izq) * (iz_tras - iz_front)
+            
+            # Solo si tiene al menos el 65% de apoyo se queda en este nivel
+            if (area_soporte / area_base) >= 0.65:
+                altura_final = y_candidato
+                break
+        
+        # Validar que no sobrepase el límite máximo de altura
+        if altura_final + h <= max_h_util + 0.5:
+            caja.position[1] = Decimal(str(round(altura_final, 2)))
             items_validos.append(caja)
 
     b_items.clear()
