@@ -73,7 +73,11 @@ export default function OpenOrdersPage() {
     setAviso("");
     try {
       const r = await refreshNow();
-      setAviso(`✔ ${r.total} · +${r.new} · Δ${r.changed} · −${r.removed}`);
+      setAviso(
+        r.new || r.changed || r.removed
+          ? fmt(t.refreshDone, { total: r.total, n: r.new, c: r.changed, r: r.removed })
+          : fmt(t.refreshNoChanges, { total: r.total })
+      );
       await cargarActivas();
       await cargarTab(tab);
     } catch (e) {
