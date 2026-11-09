@@ -27,8 +27,8 @@ def credenciales() -> dict:
     }
 
 
-# --- Persistencia y actualización automática -----------------------------------------
-DB_PATH = Path(os.getenv("GS_DB_PATH", str(BACKEND_DIR / "data" / "gs.db")))
+# --- Actualización automática ---------------------------------------------------------
+# (La base de datos es PostgreSQL, configurada en app/core/database.py con DATABASE_URL.)
 AUTO_REFRESH_MINUTES = 5
 
 # --- Reglas de negocio -----------------------------------------------------------------

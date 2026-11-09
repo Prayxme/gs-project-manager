@@ -3,6 +3,8 @@ from datetime import date, datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 
 from app.modules.open_orders import router as oo_router
 from app.modules.open_orders import service
@@ -26,8 +28,10 @@ def tabla(*filas):
 
 
 @pytest.fixture
-def store(tmp_path):
-    return Store(tmp_path / "test.db")
+def store():
+    # Pruebas sobre SQLite en memoria con el mismo código (SQLAlchemy); producción usa PostgreSQL.
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    return Store(engine, create_tables=True)
 
 
 # --- lector -------------------------------------------------------------------------------

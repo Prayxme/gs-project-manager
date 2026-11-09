@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
+from app.core.database import DatabaseNotConfigured, get_engine
 from app.modules.open_orders import service
 from app.modules.open_orders.parser import PortalResponseError
 from app.modules.open_orders.portal_client import PortalAuthError, PortalClient
@@ -21,7 +22,10 @@ _client_lock = threading.Lock()
 def get_store() -> Store:
     global _store
     if _store is None:
-        _store = Store()
+        try:
+            _store = Store(get_engine())
+        except DatabaseNotConfigured as e:
+            raise HTTPException(status_code=503, detail=str(e))
     return _store
 
 

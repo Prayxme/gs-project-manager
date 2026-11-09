@@ -1,136 +1,97 @@
 """
-Persistencia del monitor en SQLite (archivo local backend/data/gs.db, fuera de Git).
+Acceso a datos del monitor (PostgreSQL vía SQLAlchemy Core).
 
-Tablas:
-  orders         foto actual de las órdenes abiertas (una fila por pick ticket)
-  events         historial de cambios, con fecha y hora (UTC)
-  closed_orders  órdenes que salieron del portal (enviadas, removidas, canceladas)
-  runs           bitácora de cada actualización (éxito/error)
-  settings       preferencias (p. ej. actualización automática)
+Las fechas/horas se devuelven como texto ISO en UTC terminado en 'Z' para que el
+frontend las interprete siempre igual.
 """
-import json
-import sqlite3
-from contextlib import contextmanager
-from pathlib import Path
-from typing import Dict, Iterator, List, Optional
+from datetime import date, datetime, timezone
+from typing import Dict, List, Optional
 
-from app.modules.open_orders import config
+from sqlalchemy import Engine, func, insert, select, update
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS orders (
-    pick_ticket     TEXT PRIMARY KEY,
-    data            TEXT NOT NULL,
-    first_seen      TEXT NOT NULL,
-    last_seen       TEXT NOT NULL,
-    last_change     TEXT NOT NULL DEFAULT '',
-    last_change_at  TEXT
-);
-CREATE TABLE IF NOT EXISTS events (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts           TEXT NOT NULL,
-    pick_ticket  TEXT NOT NULL,
-    po           TEXT,
-    cust         TEXT,
-    event        TEXT NOT NULL,
-    old_value    TEXT,
-    new_value    TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
-CREATE TABLE IF NOT EXISTS closed_orders (
-    pick_ticket   TEXT PRIMARY KEY,
-    date_removed  TEXT NOT NULL,
-    removed_at    TEXT,
-    final_status  TEXT NOT NULL,
-    reason        TEXT NOT NULL,
-    po            TEXT, cust TEXT, ship_date TEXT, cancel_date TEXT,
-    cfrm_number   TEXT, appt_date TEXT, notes TEXT,
-    source        TEXT NOT NULL DEFAULT 'monitor'
-);
-CREATE TABLE IF NOT EXISTS runs (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    started_at   TEXT NOT NULL,
-    finished_at  TEXT,
-    trigger      TEXT NOT NULL,
-    ok           INTEGER NOT NULL DEFAULT 0,
-    total        INTEGER, new_count INTEGER, changed_count INTEGER, removed_count INTEGER,
-    error        TEXT
-);
-CREATE TABLE IF NOT EXISTS settings (
-    key    TEXT PRIMARY KEY,
-    value  TEXT NOT NULL
-);
-"""
+from app.modules.open_orders.models import SCHEMA, closed_orders, events, metadata, orders, runs, settings
+
+
+def utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normaliza a UTC con zona (SQLite devuelve fechas sin zona en las pruebas)."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+
+
+def iso(valor):
+    if isinstance(valor, datetime):
+        return utc(valor).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if isinstance(valor, date):
+        return valor.isoformat()
+    return valor
+
+
+def _fila(row) -> Dict:
+    return {k: iso(v) for k, v in row._mapping.items()}
 
 
 class Store:
-    def __init__(self, path: Optional[Path] = None):
-        self.path = Path(path or config.DB_PATH)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.conn() as c:
-            c.executescript(SCHEMA)
-
-    @contextmanager
-    def conn(self) -> Iterator[sqlite3.Connection]:
-        c = sqlite3.connect(self.path, timeout=30)
-        c.row_factory = sqlite3.Row
-        try:
-            yield c
-            c.commit()
-        except Exception:
-            c.rollback()
-            raise
-        finally:
-            c.close()
+    def __init__(self, engine: Engine, create_tables: bool = False):
+        """create_tables=True solo para pruebas; en producción la estructura la crea Alembic."""
+        if engine.dialect.name == "sqlite":
+            # SQLite (pruebas) no tiene schemas: se usan las tablas sin prefijo.
+            engine = engine.execution_options(schema_translate_map={SCHEMA: None})
+        self.engine = engine
+        if create_tables:
+            metadata.create_all(engine)
 
     # -- órdenes -----------------------------------------------------------------
     def load_orders(self) -> Dict[str, Dict]:
-        with self.conn() as c:
-            rows = c.execute("SELECT * FROM orders").fetchall()
+        with self.engine.connect() as c:
+            rows = c.execute(select(orders)).all()
         out = {}
         for r in rows:
-            d = json.loads(r["data"])
-            d.update(first_seen=r["first_seen"], last_seen=r["last_seen"],
-                     last_change=r["last_change"], last_change_at=r["last_change_at"])
-            out[r["pick_ticket"]] = d
+            d = dict(r.data)
+            d.update(first_seen=iso(r.first_seen), last_seen=iso(r.last_seen),
+                     last_change=r.last_change, last_change_at=iso(r.last_change_at))
+            out[r.pick_ticket] = d
         return out
 
     # -- configuración ---------------------------------------------------------------
     def get_setting(self, key: str, default: str = "") -> str:
-        with self.conn() as c:
-            r = c.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-        return r["value"] if r else default
+        with self.engine.connect() as c:
+            v = c.execute(select(settings.c.value).where(settings.c.key == key)).scalar()
+        return default if v is None else v
 
     def set_setting(self, key: str, value: str) -> None:
-        with self.conn() as c:
-            c.execute("INSERT INTO settings(key, value) VALUES(?, ?) "
-                      "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+        with self.engine.begin() as c:
+            if c.execute(update(settings).where(settings.c.key == key).values(value=value)).rowcount == 0:
+                c.execute(insert(settings).values(key=key, value=value))
 
     # -- consultas -------------------------------------------------------------------
-    def events(self, limit: int = 500, since: Optional[str] = None) -> List[Dict]:
-        q, args = "SELECT * FROM events", []
-        if since:
-            q += " WHERE ts >= ?"
-            args.append(since)
-        q += " ORDER BY ts DESC, id DESC LIMIT ?"
-        args.append(limit)
-        with self.conn() as c:
-            return [dict(r) for r in c.execute(q, args).fetchall()]
+    def events(self, limit: int = 500, since: Optional[datetime] = None) -> List[Dict]:
+        q = select(events).order_by(events.c.ts.desc(), events.c.id.desc()).limit(limit)
+        if since is not None:
+            q = q.where(events.c.ts >= since)
+        with self.engine.connect() as c:
+            return [_fila(r) for r in c.execute(q)]
 
     def closed(self, limit: int = 2000) -> List[Dict]:
-        with self.conn() as c:
-            rows = c.execute("SELECT * FROM closed_orders ORDER BY date_removed DESC, pick_ticket DESC LIMIT ?",
-                             (limit,)).fetchall()
-        return [dict(r) for r in rows]
+        q = (select(closed_orders)
+             .order_by(closed_orders.c.date_removed.desc(), closed_orders.c.pick_ticket.desc())
+             .limit(limit))
+        with self.engine.connect() as c:
+            return [_fila(r) for r in c.execute(q)]
 
     def closed_pick_tickets(self) -> set:
-        with self.conn() as c:
-            return {r[0] for r in c.execute("SELECT pick_ticket FROM closed_orders").fetchall()}
+        with self.engine.connect() as c:
+            return set(c.execute(select(closed_orders.c.pick_ticket)).scalars())
+
+    def count_closed(self) -> int:
+        with self.engine.connect() as c:
+            return c.execute(select(func.count()).select_from(closed_orders)).scalar_one()
 
     def last_runs(self, limit: int = 1) -> List[Dict]:
-        with self.conn() as c:
-            return [dict(r) for r in c.execute("SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()]
+        with self.engine.connect() as c:
+            return [_fila(r) for r in c.execute(select(runs).order_by(runs.c.id.desc()).limit(limit))]
 
     def last_ok_run(self) -> Optional[Dict]:
-        with self.conn() as c:
-            r = c.execute("SELECT * FROM runs WHERE ok=1 ORDER BY id DESC LIMIT 1").fetchone()
-        return dict(r) if r else None
+        with self.engine.connect() as c:
+            r = c.execute(select(runs).where(runs.c.ok.is_(True)).order_by(runs.c.id.desc()).limit(1)).first()
+        return _fila(r) if r else None

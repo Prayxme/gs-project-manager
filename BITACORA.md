@@ -30,6 +30,18 @@ en backend `app/modules/<id>/router.py` incluido en `main.py` con prefijo `/api/
 
 ## Registro
 
+### 2026-11-09 · Base de datos de la plataforma: PostgreSQL (v0.12.0)
+- **Hecho:** base `gs_project_manager` (usuario `gs_app`), `alembic upgrade head` OK (schema `open_orders` con 5 tablas),
+  sincronización inicial (535 órdenes) e importación del histórico ROUTING_COMPLETED (790 filas, 0 errores). Backend en vivo leyendo PostgreSQL.
+- `.env.example` eliminado a pedido del usuario (no recrear).
+- Pendiente de decisión: reclasificar 75 filas importadas REMOVED → COMPLETED (formatos LOAD ID #, CITI, FedEx), guardando el valor original.
+- Decisión del usuario: PostgreSQL (servicio local `postgresql-x64-18`) como base única de la plataforma, pensando en módulos futuros.
+- `app/core/database.py`: conexión compartida (SQLAlchemy 2 + psycopg 3) desde `DATABASE_URL` en `.env`.
+- Cada módulo usa su propio *schema* PostgreSQL (`open_orders.*`). Estructura versionada con **Alembic** (`backend/migrations`, migración `0001_open_orders`).
+- Se eliminó la base SQLite temporal. Las pruebas usan SQLite en memoria con el mismo código; producción usa PostgreSQL.
+- Pendiente: el usuario crea la base y el usuario en PostgreSQL, completa `DATABASE_URL`; luego `alembic upgrade head`, primera sincronización e importación del CSV histórico.
+- Nota: el commit "fixing" del usuario eliminó `backend/.env.example` del repo; se recreó (solo plantilla, sin valores).
+
 ### 2026-11-09 · Módulo Monitor de Órdenes Abiertas / Routing Wiesner (v0.11.0)
 - Porta el Google Apps Script (scraper de wpinyweb.com) a `backend/app/modules/open_orders/` + `frontend/.../modules/open-orders/`.
 - **Solo lectura del portal:** únicamente `ajcmd_show_list` (esa página también permite escribir routing). Credenciales SOLO en `backend/.env` (plantilla `.env.example`).
@@ -39,7 +51,7 @@ en backend `app/modules/<id>/router.py` incluido en `main.py` con prefijo `/api/
 - **Errores del Apps Script corregidos:** historial duplicado cada 5 min; KPIs "hoy" que no eran de hoy; tabla vacía marcaba todo como cancelado (ahora se aborta y se conserva la foto);
   solo 1 cambio por corrida (ahora todos); día de menos por cambio de horario; cliente `S&JS` leído como `S`;
   `LOAD ID # 123`, `Load ID : 123`, cargas CITI y guías FedEx se trataban como routing → salían como "REMOVED" en vez de "SHIPPED".
-- **Formatos Cfrm vistos en el portal real:** cita = CS…, LOAD ID…, CT…, tracking/guía ≥10 dígitos; routing = RTS…, REF#…, D…, PJ#…, 6–9 dígitos (BURL/NEWT, sin cita). POR CONFIRMAR con el usuario.
+- **Formatos Cfrm vistos en el portal real:** cita = CS…, LOAD ID…, CT…, tracking/guía ≥10 dígitos; routing = RTS…, REF#…, D…, PJ#…, 6–9 dígitos (BURL/NEWT, sin cita). CONFIRMADO por el usuario.
 - **Actualización:** botón manual + casilla "Auto cada 5 min" (corre en el backend mientras esté encendido). Importación del histórico `ROUTING_COMPLETED` por CSV desde la pestaña "Cerradas".
 - **Verificado:** conexión real OK (535 órdenes leídas, primera sincronización hecha). 80 pruebas pasan. Build y lint OK.
 - **Importante:** el backend debe correr con el venv (`backend\venv\Scripts\python -m uvicorn ...`); el Python global no tiene httpx/tzdata/dotenv.
