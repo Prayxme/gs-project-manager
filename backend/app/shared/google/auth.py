@@ -2,16 +2,15 @@
 Autorización OAuth con la cuenta de Google Workspace del usuario.
 
 Uso (una sola vez, desde backend/):
-    .\\venv\\Scripts\\python -m app.modules.order_intake.google_auth
+    .\\venv\\Scripts\\python -m app.shared.google.auth
 
 Abre el navegador para iniciar sesión y aceptar los permisos. El token queda en
 backend/secrets/google_token.json (excluido de Git) y se renueva solo.
-Luego verifica, en modo lectura, que ambas hojas sean accesibles.
 """
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from app.modules.order_intake import config
+from app.shared.google import config
 
 
 class GoogleNotAuthorized(RuntimeError):
@@ -23,7 +22,7 @@ def credenciales() -> Credentials:
     if not config.OAUTH_TOKEN_FILE.exists():
         raise GoogleNotAuthorized(
             "Google no está autorizado todavía. Ejecute: "
-            ".\\venv\\Scripts\\python -m app.modules.order_intake.google_auth"
+            ".\\venv\\Scripts\\python -m app.shared.google.auth"
         )
     creds = Credentials.from_authorized_user_file(str(config.OAUTH_TOKEN_FILE), config.SCOPES)
     if not creds.valid:
@@ -47,21 +46,8 @@ def autorizar() -> Credentials:
     return creds
 
 
-def _verificar(creds: Credentials) -> None:
-    from googleapiclient.discovery import build
-
-    sheets = build("sheets", "v4", credentials=creds, cache_discovery=False).spreadsheets()
-    for nombre, sid, tab in (
-        ("Pick Ticket Control", config.PICKTICKET_SHEET_ID, config.PICKTICKET_TAB),
-        ("Incoming Containers", config.CONTAINERS_SHEET_ID, config.CONTAINERS_TAB),
-    ):
-        meta = sheets.get(spreadsheetId=sid, fields="properties.title,sheets.properties.title").execute()
-        pestañas = [s["properties"]["title"] for s in meta["sheets"]]
-        estado = "OK" if tab in pestañas else f"NO ENCONTRADA (hay: {pestañas})"
-        print(f"{nombre}: '{meta['properties']['title']}' · pestaña '{tab}': {estado}")
-
-
 if __name__ == "__main__":
     c = autorizar()
-    print("Autorización guardada.")
-    _verificar(c)
+    print("Autorización guardada. Permisos concedidos:")
+    for scope in sorted(c.scopes or config.SCOPES):
+        print(" -", scope)

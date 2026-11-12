@@ -2,9 +2,10 @@
 Solo validan y delegan; la lógica vive en services/."""
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.modules.palletizer.schemas import PackingRequest, ParsedPdfResponse
+from app.modules.palletizer.schemas import PackingRequest
 from app.modules.palletizer.services.packing_service import optimizar_orden_pallets
-from app.modules.palletizer.services.pdf_service import extraer_datos_pick_ticket
+from app.shared.pick_ticket import extraer_datos_pick_ticket
+from app.shared.pick_ticket.schemas import ParsedPdfResponse
 
 router = APIRouter(prefix="/api/palletizer", tags=["Paletizador"])
 

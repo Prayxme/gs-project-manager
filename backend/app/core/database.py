@@ -6,15 +6,11 @@ Conexión a la base de datos de la plataforma (PostgreSQL), compartida por todos
   (p. ej. `open_orders.orders`), para que los módulos crezcan sin chocar entre sí.
 - La estructura de tablas se versiona con Alembic (backend/migrations).
 """
-import os
 from functools import lru_cache
-from pathlib import Path
 
-from dotenv import load_dotenv
 from sqlalchemy import Engine, create_engine
 
-BACKEND_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(BACKEND_DIR / ".env")
+from app.core.settings import env
 
 
 class DatabaseNotConfigured(RuntimeError):
@@ -22,7 +18,7 @@ class DatabaseNotConfigured(RuntimeError):
 
 
 def database_url() -> str:
-    url = os.getenv("DATABASE_URL", "").strip()
+    url = env("DATABASE_URL")
     if not url:
         raise DatabaseNotConfigured(
             "La base de datos no está configurada: defina DATABASE_URL en backend/.env "

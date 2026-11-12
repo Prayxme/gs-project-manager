@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import DatabaseNotConfigured, get_engine
 from app.modules.order_intake import service
-from app.modules.order_intake.google_auth import GoogleNotAuthorized
+from app.shared.google.auth import GoogleNotAuthorized
 from app.modules.order_intake.sheets_client import SheetsGateway
 
 router = APIRouter(prefix="/api/order-intake", tags=["Ingreso de Órdenes"])

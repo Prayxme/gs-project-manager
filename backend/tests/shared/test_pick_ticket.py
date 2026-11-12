@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from app.modules.palletizer.services.pdf_service import _parse_item_line, extraer_datos_pick_ticket, parsear_paginas
+from app.shared.pick_ticket import extraer_datos_pick_ticket, parsear_paginas
+from app.shared.pick_ticket import parse_item_line as _parse_item_line
 
 HEADER = """WIESNER PRODUCTS, INC.
 1410 Broadway, 8th Floor

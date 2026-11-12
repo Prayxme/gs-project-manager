@@ -1,11 +1,5 @@
 """Configuración del módulo Órdenes Abiertas (monitor de routing Wiesner)."""
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
-BACKEND_DIR = Path(__file__).resolve().parents[3]
-load_dotenv(BACKEND_DIR / ".env")
+from app.core.settings import env
 
 # --- Portal (solo lectura: se usa ÚNICAMENTE ajcmd_show_list) ---------------------
 PORTAL_BASE_URL = "https://wpinyweb.com"
@@ -21,9 +15,9 @@ WAREHOUSE = "PM"
 # --- Credenciales (solo desde backend/.env) ------------------------------------------
 def credenciales() -> dict:
     return {
-        "comp_code": os.getenv("WIESNER_COMPANY_CODE", "").strip(),
-        "username": os.getenv("WIESNER_USERNAME", "").strip(),
-        "password": os.getenv("WIESNER_PASSWORD", "").strip(),
+        "comp_code": env("WIESNER_COMPANY_CODE"),
+        "username": env("WIESNER_USERNAME"),
+        "password": env("WIESNER_PASSWORD"),
     }
 
 

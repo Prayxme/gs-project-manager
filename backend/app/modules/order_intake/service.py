@@ -14,7 +14,7 @@ from sqlalchemy import Engine, insert, select
 from app.modules.order_intake import rules
 from app.modules.order_intake.models import SCHEMA, intake_log, metadata
 from app.modules.order_intake.sheets_client import SheetsGateway
-from app.modules.palletizer.services.pdf_service import extraer_datos_pick_ticket
+from app.shared.pick_ticket import extraer_datos_pick_ticket
 
 _lock = threading.Lock()  # una escritura a la vez sobre la hoja
 
