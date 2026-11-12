@@ -66,6 +66,14 @@ def test_un_pikitk_en_varias_paginas_es_una_sola_orden():
     assert r["warnings"] == []  # 94+140+275 == 509 declarado
 
 
+def test_total_de_la_ultima_pagina_aunque_vengan_desordenadas():
+    # Página 3 con el TOTAL real; una página 1 con un TOTAL (anómalo) aparece después en el archivo.
+    p3 = PAGE_2.replace(" 6844422 2\n", " 6844422 3\n")
+    p1_con_total = PAGE_1 + "TOTAL: 100 234 TOT WEIGHT: 1.0 LB TOT DIMENSION: 1.0 CFT\n"
+    o = parsear_paginas([PAGE_2.replace("TOTAL: 20088 509", "x"), p3, p1_con_total])["orders"][0]
+    assert o["pages"] == 3 and o["declared_cases"] == 509
+
+
 def test_cada_pikitk_es_una_orden_distinta_con_su_destino():
     r = parsear_paginas([PAGE_1, PAGE_2, PAGE_OTRO])
     assert [o["piktik"] for o in r["orders"]] == ["6844422", "6846787"]

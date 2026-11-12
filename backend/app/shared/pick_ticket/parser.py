@@ -44,12 +44,16 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
         for campo in CAMPOS_ORDEN:
             if not order[campo] and page[campo]:
                 order[campo] = page[campo]
-        if page["declared_cases"] is not None:
+        # Un PikTik puede ocupar varias páginas ("Page" 1, 2, 3...): el TOTAL de cartones válido es
+        # el de su ÚLTIMA página (la de número más alto), sin importar el orden dentro del archivo.
+        if page["declared_cases"] is not None and page["page_no"] >= order["_total_page"]:
             order["declared_cases"] = page["declared_cases"]
+            order["_total_page"] = page["page_no"]
         order["items"].extend(page["items"])
 
     result_orders = list(orders.values())
     for o in result_orders:
+        del o["_total_page"]
         _desambiguar_skus(o["items"])
         # Contenedores de la orden: unión de todas sus líneas, en orden de aparición.
         o["containers"] = list(dict.fromkeys(c for it in o["items"] for c in it.get("containers", [])))
@@ -68,7 +72,7 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
 
 def _orden_vacia(page: Dict[str, Any]) -> Dict[str, Any]:
     return {"piktik": page["piktik"], **{c: page[c] for c in CAMPOS_ORDEN},
-            "pages": 0, "declared_cases": None, "items": []}
+            "pages": 0, "declared_cases": None, "_total_page": 0, "items": []}
 
 
 def _desambiguar_skus(items: List[Dict[str, Any]]) -> None:
