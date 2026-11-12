@@ -19,4 +19,11 @@ export const MODULES = [
     status: "active",
     component: lazy(() => import("../modules/open-orders/OpenOrdersPage")),
   },
+  {
+    id: "order-intake",
+    path: "/order-intake",
+    icon: "📥",
+    status: "active",
+    component: lazy(() => import("../modules/order-intake/OrderIntakePage")),
+  },
 ];

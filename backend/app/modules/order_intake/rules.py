@@ -121,17 +121,32 @@ def recibido(conts: Sequence[str], inbound: Dict[str, bool]) -> Tuple[str, List[
 # ---------------------------------------------------------------------------
 # Fila nueva y revisión
 # ---------------------------------------------------------------------------
-def valores_orden(orden: Dict) -> Dict[str, object]:
-    """Valores de las columnas de datos (sin A ni G) para una orden leída del PDF."""
+def desde_pdf(orden: Dict) -> Dict:
+    """Orden del lector de PDF -> orden de ingreso (lo que el usuario revisa y puede corregir)."""
     return {
-        "B": empresa(orden.get("company", "")),
-        "C": orden.get("cust_no", ""),
-        "D": orden.get("po", ""),
-        "E": int(orden["piktik"]),
-        "F": " ".join(orden.get("containers", [])),
-        "H": parse_fecha(orden.get("ship_date")),
-        "I": parse_fecha(orden.get("cancel_date")),
-        "V": sum(int(it.get("qty", 0)) for it in orden.get("items", [])),
+        "piktik": str(orden["piktik"]),
+        "company": empresa(orden.get("company", "")),
+        "store": orden.get("cust_no", ""),
+        "po": orden.get("po", ""),
+        "containers": list(orden.get("containers", [])),
+        "ship_date": orden.get("ship_date", ""),
+        "cancel_date": orden.get("cancel_date", ""),
+        "ctns": sum(int(it.get("qty", 0)) for it in orden.get("items", [])),
+    }
+
+
+def valores_orden(orden: Dict) -> Dict[str, object]:
+    """Valores de las columnas de datos (sin A ni G). Acepta una orden de ingreso o una del PDF."""
+    o = orden if "store" in orden else desde_pdf(orden)
+    return {
+        "B": o["company"],
+        "C": o["store"],
+        "D": str(o["po"]).strip(),
+        "E": int(o["piktik"]),
+        "F": " ".join(contenedores(" ".join(o["containers"]))),
+        "H": parse_fecha(o["ship_date"]),
+        "I": parse_fecha(o["cancel_date"]),
+        "V": int(o["ctns"]),
     }
 
 

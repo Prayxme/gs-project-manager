@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import ALLOWED_ORIGINS, APP_NAME, APP_VERSION
 from app.modules.open_orders import router as open_orders
 from app.modules.open_orders.scheduler import bucle_auto_refresh
+from app.modules.order_intake.router import router as order_intake_router
 from app.modules.palletizer.router import router as palletizer_router
 
 
@@ -40,6 +41,7 @@ app.add_middleware(
 # Un router por módulo. Para un módulo nuevo: app/modules/<modulo>/router.py e incluirlo aquí.
 app.include_router(palletizer_router)
 app.include_router(open_orders.router)
+app.include_router(order_intake_router)
 
 
 @app.get("/health", tags=["Health Check"])

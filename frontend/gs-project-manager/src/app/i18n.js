@@ -21,6 +21,10 @@ export const APP_I18N = {
         name: "Open Orders Monitor",
         description: "Track Wiesner open orders in the warehouse: filter, sort and monitor.",
       },
+      "order-intake": {
+        name: "Order Intake",
+        description: "Read Pick Ticket PDFs and register new orders and revisions in the control sheet.",
+      },
     },
   },
   es: {
@@ -43,6 +47,10 @@ export const APP_I18N = {
       "open-orders": {
         name: "Monitor de Órdenes Abiertas",
         description: "Seguimiento de las órdenes abiertas de Wiesner en bodega: filtra, ordena y monitorea.",
+      },
+      "order-intake": {
+        name: "Ingreso de Órdenes",
+        description: "Lee los PDF de Pick Tickets y registra órdenes nuevas y revisiones en la hoja de control.",
       },
     },
   },

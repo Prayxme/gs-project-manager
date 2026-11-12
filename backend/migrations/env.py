@@ -5,12 +5,13 @@ from alembic import context
 
 from app.core.database import database_url, get_engine
 from app.modules.open_orders.models import metadata as open_orders_metadata
+from app.modules.order_intake.models import metadata as order_intake_metadata
 
 if context.config.config_file_name:
     fileConfig(context.config.config_file_name)
 
 # Metadata de cada módulo con tablas. Agregar aquí la de los módulos futuros.
-target_metadata = [open_orders_metadata]
+target_metadata = [open_orders_metadata, order_intake_metadata]
 
 
 def run_migrations_offline() -> None:

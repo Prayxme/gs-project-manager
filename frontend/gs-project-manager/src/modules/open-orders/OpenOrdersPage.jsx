@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "../../app/AppSettings";
 import CaliforniaClock from "./components/CaliforniaClock";
-import DataTable from "./components/DataTable";
+import DataTable from "../../shared/components/DataTable";
 import KpiBar from "./components/KpiBar";
 import { AUTO_REFRESH_POLL_MS, CLOSED_STYLE, I18N, STATUS_STYLE, fmt } from "./constants";
 import {
