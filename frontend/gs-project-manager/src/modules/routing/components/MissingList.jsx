@@ -2,7 +2,7 @@ import { CopyValue } from "../../../shared/components";
 import { usDate } from "../utils/format";
 import DeadlineBadge from "./DeadlineBadge";
 
-// Órdenes urgentes del portal de las que no se tiene el Pick Ticket: hay que subir su PDF.
+// Órdenes de la selección de las que no se tiene el Pick Ticket: hay que subir su PDF.
 export default function MissingList({ orders, t }) {
   if (!orders.length) return null;
   return (

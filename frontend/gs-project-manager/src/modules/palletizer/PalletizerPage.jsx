@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAppSettings, useTranslations } from '../../shared/settings';
 import { I18N } from './constants/i18n';
 import { LOGISTICS_DEFAULTS } from './constants/logisticsConfig';
 import { useCargoForm } from './hooks/useCargoForm';
+import { useExternalPreview } from './hooks/useExternalPreview';
 import { usePacking } from './hooks/usePacking';
 import { usePdfImport } from './hooks/usePdfImport';
-import { calculateCenteredOffsets, trailerMetrics } from './utils/palletUtils';
+import { calculateCenteredOffsets, conPalletsDeMargen, trailerMetrics } from './utils/palletUtils';
 
 import Viewport3D from './components/3d/Viewport3D';
 import LayoutSelector from './components/ui/LayoutSelector';
 import MobileViewSwitch from './components/ui/MobileViewSwitch';
 import PdfReviewModal from './components/ui/PdfReviewModal';
+import PreviewCard from './components/ui/PreviewCard';
 import Sidebar from './components/ui/Sidebar';
 import TrailerCard from './components/ui/TrailerCard';
 
@@ -21,9 +23,12 @@ export default function PalletizerPage() {
   // En celular: 'data' (formulario) o '3d' (visor y resultados).
   const [vista, setVista] = useState("data");
 
-  const form = useCargoForm();
   const pdf = usePdfImport(t);
   const packing = usePacking(t);
+  // Carga enviada por otro módulo (un RTS de Routing): se calcula sola y muestra sus pallets de margen.
+  const verEn3d = useCallback(() => setVista("3d"), []);
+  const { vista: vistaExterna, inicial } = useExternalPreview(packing.calcular, verEn3d);
+  const form = useCargoForm(inicial);
 
   const aplicarDatosPDF = () => {
     form.cargarDesdePdf(pdf.pdfParsedData);
@@ -31,9 +36,13 @@ export default function PalletizerPage() {
     pdf.cerrarModal();
   };
 
-  const calcularArmado = () => packing.calcular(form.orderInfo, form.itemsForm, () => setVista("3d"));
+  const calcularArmado = () => packing.calcular(form.orderInfo, form.itemsForm, verEn3d);
 
-  const { gruposPallets, grupoSeleccionadoIdx, setGrupoSeleccionadoIdx } = packing;
+  const { grupoSeleccionadoIdx, setGrupoSeleccionadoIdx } = packing;
+  const gruposPallets = useMemo(
+    () => (vistaExterna ? conPalletsDeMargen(packing.gruposPallets, vistaExterna.pos) : packing.gruposPallets),
+    [packing.gruposPallets, vistaExterna]
+  );
   const palletData = gruposPallets[grupoSeleccionadoIdx]?.pallet;
   const metricas = trailerMetrics(gruposPallets, form.itemsForm);
 
@@ -76,22 +85,24 @@ export default function PalletizerPage() {
         />
 
         {/* Paneles: flotantes a la derecha en escritorio, debajo del visor en celular */}
-        {gruposPallets.length > 0 && (
+        {(gruposPallets.length > 0 || vistaExterna) && (
           <div className="p-3 md:p-0 md:absolute md:top-4 md:right-4 z-20 flex flex-col gap-2.5 md:w-80 md:max-h-[calc(100%-2rem)] md:overflow-y-auto">
+            {vistaExterna && <PreviewCard vista={vistaExterna} gruposPallets={gruposPallets} t={t} />}
             <LayoutSelector
               gruposPallets={gruposPallets}
               grupoSeleccionadoIdx={grupoSeleccionadoIdx}
               setGrupoSeleccionadoIdx={setGrupoSeleccionadoIdx}
+              showPo={Boolean(vistaExterna)}
               t={t}
             />
-            <TrailerCard
+            {!vistaExterna && <TrailerCard
               totalPalletsGenerados={metricas.totalPallets}
               numRTs={metricas.numRTs}
               totalCubeFeet={metricas.totalCubeFeet}
               totalGrossWeight={metricas.totalGrossWeight}
               maxCft={LOGISTICS_DEFAULTS.MAX_CFT_POR_RT}
               t={t}
-            />
+            />}
           </div>
         )}
       </div>

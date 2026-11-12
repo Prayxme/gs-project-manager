@@ -1,4 +1,5 @@
-export default function LayoutSelector({ gruposPallets, grupoSeleccionadoIdx, setGrupoSeleccionadoIdx, t }) {
+// `showPo`: muestra la PO de cada layout (cuando la carga trae varias POs, p. ej. un RTS).
+export default function LayoutSelector({ gruposPallets, grupoSeleccionadoIdx, setGrupoSeleccionadoIdx, showPo = false, t }) {
   if (!gruposPallets || gruposPallets.length === 0) return null;
 
   return (
@@ -10,7 +11,7 @@ export default function LayoutSelector({ gruposPallets, grupoSeleccionadoIdx, se
         </span>
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 gap-1.5 max-h-36 overflow-y-auto pr-1">
+      <div className={`grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 gap-1.5 overflow-y-auto pr-1 ${showPo ? "max-h-72" : "max-h-36"}`}>
         {gruposPallets.map((grupo, idx) => (
           <button
             key={idx}
@@ -19,13 +20,18 @@ export default function LayoutSelector({ gruposPallets, grupoSeleccionadoIdx, se
             className={`px-1.5 py-1.5 rounded-xl text-[11px] font-extrabold transition flex flex-col items-center justify-center border ${
               grupoSeleccionadoIdx === idx
                 ? "bg-brand text-on-brand border-transparent shadow-md"
-                : "bg-surface-2 border-line text-ink-2 hover:bg-surface-3"
+                : grupo.margen
+                  ? "bg-amber-400/15 border-amber-500/50 border-dashed text-ink-2 hover:bg-amber-400/25"
+                  : "bg-surface-2 border-line text-ink-2 hover:bg-surface-3"
             }`}
           >
             <span>
-              {t.layoutLabel} {String.fromCharCode(65 + idx)}
+              {grupo.margen ? t.marginLabel : `${t.layoutLabel} ${String.fromCharCode(65 + idx)}`}
             </span>
             <span className="text-[10px] opacity-80 font-mono">x{grupo.cantidad}</span>
+            {showPo && grupo.po && (
+              <span className="text-[9px] opacity-70 font-mono max-w-full truncate">{grupo.po}</span>
+            )}
           </button>
         ))}
       </div>

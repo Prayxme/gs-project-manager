@@ -3,21 +3,15 @@ import { fmt } from "../../../shared/i18n/format";
 
 const KPIS = ["pos", "rts", "pallets", "already_routed", "excluded"];
 
-// Estado del portal, origen de los datos, cifras del plan y avisos de lectura de los PDFs.
+// Estado del portal, archivos subidos, cifras del plan y avisos de lectura de los PDFs.
 export default function PlanSummary({ plan, files, t }) {
   const { portal, summary, warnings } = plan;
-  const urgente = plan.scope === "urgent";
   return (
     <div className="space-y-3">
       {portal.ok ? (
         <p className="text-xs font-bold text-brand-ink">✔ {fmt(t.portalOk, { n: portal.orders })}</p>
       ) : (
         <Alert kind="warning">{fmt(t.portalDown, { e: portal.error })}</Alert>
-      )}
-      {urgente && (
-        <p className="text-sm font-bold text-ink">
-          ⚡ {fmt(t.urgentIntro, { n: plan.urgent, d: plan.days, m: summary.missing })}
-        </p>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {KPIS.map((k) => (
@@ -29,7 +23,7 @@ export default function PlanSummary({ plan, files, t }) {
           </div>
         ))}
       </div>
-      {!urgente && <p className="text-xs text-muted break-words">{t.files}: {files.join(", ")}</p>}
+      {files.length > 0 && <p className="text-xs text-muted break-words">{t.files}: {files.join(", ")}</p>}
       {warnings.length > 0 && (
         <details className="text-xs text-ink-2">
           <summary className="cursor-pointer font-bold text-amber-700 dark:text-amber-300">

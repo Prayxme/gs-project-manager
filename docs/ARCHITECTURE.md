@@ -36,7 +36,8 @@ app/
 │   │                       lo alimenta Ingreso de Órdenes (Gmail) y lo usa Routing (órdenes urgentes)
 │   ├── packing/            motor de empaque de pallets (models, layer_patterns, placement,
 │   │                       group_packer, physics_engine, config): Paletizador y Routing
-│   └── wiesner/            customers.py (código de cliente, ventana de routing; MODE = BURL) y
+│   └── wiesner/            customers.py (código de cliente, ventana de routing; MODE = BURL),
+│                           status.py (estado de routing de una orden: lo usan el Monitor y Routing) y
 │                           portal/ (cliente de solo lectura, sesión única, lector de la tabla)
 └── modules/<id>/
     ├── module.py           ModuleSpec(id, router, background_tasks) -> registro automático
@@ -55,10 +56,12 @@ Módulos actuales:
 |---|---|---|
 | `palletizer` | `/api/palletizer` | `services/packing_service` (entrada; el motor está en `shared/packing`) |
 | `open_orders` | `/api/open-orders` | `rules/` (cfrm, status, changes), `services/` (refresh, views, history_import), `scheduler` (portal en `shared/wiesner`) |
-| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping, urgency), `services/` (estimate, purchase_orders, plan, urgent), `config` (reglas de RTS). `POST /plan` (PDFs subidos) y `GET /urgent` (órdenes urgentes del portal con el catálogo) |
+| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping, selection), `services/` (estimate, purchase_orders, plan, selection), `config` (reglas de RTS). `POST /plan` (PDFs subidos; con `status`/`cust` solo toma las órdenes de esa selección), `GET /selection` (órdenes del portal por estado y Customer No, con el catálogo) y `GET /urgent` (atajo: vencidas, último día y atención) |
 
-Los módulos se enlazan en la interfaz solo por URL (p. ej. el Monitor abre `../routing?scope=urgent`);
-los datos que comparten pasan por `shared` (catálogo de Pick Tickets, portal), nunca por imports entre módulos.
+Los módulos se enlazan en la interfaz solo por URL: el Monitor abre `../routing?status=OVERDUE&cust=BURL120`
+(o `?scope=urgent`) y Routing abre `../palletizer?source=preview` para ver un RTS en 3D. Los datos que
+comparten pasan por `shared` (catálogo de Pick Tickets, portal, estado de routing y, en el frontend,
+`shared/handoff`), nunca por imports entre módulos.
 
 Las pruebas no pueden abrir la base de datos real (`tests/conftest.py` lo bloquea): cada prueba crea
 su repositorio sobre SQLite.
@@ -95,9 +98,12 @@ src/
 │   ├── api/                createApiClient(prefijo), jsonBody, fileBody, API_BASE_URL
 │   ├── settings/           AppSettingsProvider, useAppSettings, useTranslations
 │   ├── components/         Alert, Badge, CopyValue, DataTable, FileButton, PageHeader, Tabs (index.js)
+│   ├── handoff/            carga que un módulo deja para que otro la muestre (palletPreview: un RTS
+│   │                       de Routing visto en el Paletizador 3D, con la URL para regresar)
 │   ├── hooks/              useBusyTask (ocupado + error de una tarea asíncrona)
 │   ├── i18n/format.js      fmt("{n} órdenes", { n })
-│   └── utils/              dates.js, storage.js
+│   └── utils/              dates.js, storage.js (preferencias en localStorage; datos de trabajo en
+│                           sessionStorage, p. ej. el plan de Routing mientras se mira otro módulo)
 └── modules/<id>/
     ├── <Nombre>Page.jsx    solo compone: hooks + componentes
     ├── constants/          i18n.js, estilos/estados, configuración (index.js)

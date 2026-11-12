@@ -11,6 +11,15 @@ def test_margen_sobre_la_estimacion(estimado, enrutar):
     assert rules.pallets_a_enrutar(estimado) == enrutar
 
 
+@pytest.mark.parametrize("estimado,ultima,enrutar", [
+    (4, 0.30, 5), (4, 0.35, 5), (4, 0.36, 6), (4, None, 6),   # última pallet casi vacía: un pallet menos
+    (17, 0.10, 19), (24, 0.20, 27),
+    (2, 0.10, 3), (1, None, 2),                                # el margen nunca baja de un pallet
+])
+def test_margen_segun_el_llenado_de_la_ultima_pallet(estimado, ultima, enrutar):
+    assert rules.pallets_a_enrutar(estimado, ultima) == enrutar
+
+
 def test_cft_por_cliente():
     assert rules.cft_declarado("BURL", 3) == 270
     assert rules.cft_declarado("MODE", 3) == 270
@@ -26,8 +35,9 @@ def test_limites_y_familia():
     assert rules.limite_pallets("ROSS") == rules.limite_pallets("DDSD") == 26
     assert rules.limite_pallets("BURL") == rules.limite_pallets("MARS") == 28
     assert rules.limite_pallets("MODE") == 28
-    assert rules.familia("MODE") != rules.familia("BURL")   # portales distintos
-    assert rules.familia("ROSS") == "ROSS"
+    assert rules.familia("MODE120") != rules.familia("BURL120")   # portales distintos
+    assert rules.familia("BURL120") != rules.familia("BURL240")   # divisiones de la misma tienda
+    assert rules.familia(" burl120 ") == "BURL120"
 
 
 def _po(po, pallets, weight=1000):
@@ -70,8 +80,8 @@ def test_conciliacion_ya_enrutada():
     assert rules.conciliar("1", "P", 1000, portal)[0] == "ALREADY_ROUTED"
 
 
-def _grupo(po, cust="BURL", key="92408 570 E MILL ST", cancel="2026-11-17"):
-    return {"po": po, "customer_code": cust, "family": rules.familia(cust), "address_key": key,
+def _grupo(po, cust="BURL", key="92408 570 E MILL ST", cancel="2026-11-17", division="120"):
+    return {"po": po, "customer_code": cust, "family": rules.familia(cust + division), "address_key": key,
             "cancel_date": cancel}
 
 
@@ -79,6 +89,7 @@ def test_clave_de_grupo():
     assert rules.clave_grupo(_grupo("1")) == rules.clave_grupo(_grupo("2"))
     # BURL y MODE van al mismo DC 512 pero se enrutan en portales distintos.
     assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", cust="MODE"))
+    assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", division="240"))
     assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", cancel="2026-11-24"))
     assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", key="92572 3404 INDIAN AVE"))
     # MARS / TJMA / NEWT: el prefijo de la PO separa DCs aunque la dirección coincida.

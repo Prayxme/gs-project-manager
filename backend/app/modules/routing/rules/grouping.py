@@ -1,7 +1,7 @@
 """Qué POs pueden ir juntas en un RTS y cómo se reparten respetando el límite de pallets.
 
 Pueden ir juntas solo si coinciden en:
-  * código de cliente (BURL y MODE van separados: se enrutan en portales distintos),
+  * Customer No completo (BURL120 y BURL240 van separados; también BURL y MODE),
   * dirección SHIP TO del PDF (calle + código postal normalizados),
   * Cancel Date (nuestra fecha de referencia),
   * en TJMA / MARS / NEWT, los 2 primeros dígitos de la PO (indican el DC).

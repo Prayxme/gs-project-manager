@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { buildSkuColorMap, formDesdePdf, lineaVacia } from "../utils/palletUtils";
 
-// Formulario de carga: datos de la orden + una línea por SKU (manual o importada del PDF).
-export function useCargoForm() {
-  const [orderInfo, setOrderInfo] = useState({ po: "", piktik: "", company: "", custNo: "" });
-  const [itemsForm, setItemsForm] = useState([lineaVacia()]);
+// Formulario de carga: datos de la orden + una línea por SKU (manual, importada del PDF o,
+// con `inicial` = { orderInfo, items }, enviada por otro módulo).
+export function useCargoForm(inicial) {
+  const [orderInfo, setOrderInfo] = useState(inicial?.orderInfo || { po: "", piktik: "", company: "", custNo: "" });
+  const [itemsForm, setItemsForm] = useState(inicial?.items || [lineaVacia()]);
 
   const skuColorMap = useMemo(() => buildSkuColorMap(itemsForm), [itemsForm]);
 

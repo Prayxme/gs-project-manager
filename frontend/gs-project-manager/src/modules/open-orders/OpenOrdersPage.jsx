@@ -10,20 +10,21 @@ import KpiBar from "./components/KpiBar";
 import OrderFiltersBar from "./components/OrderFiltersBar";
 import RefreshControls from "./components/RefreshControls";
 import RouteUrgentLink from "./components/RouteUrgentLink";
+import StatusSections from "./components/StatusSections";
 import { I18N, rowStyle } from "./constants";
 import { useOpenOrdersData } from "./hooks/useOpenOrdersData";
 import { useOrderFilters } from "./hooks/useOrderFilters";
 
 export default function OpenOrdersPage() {
   const t = useTranslations(I18N);
-  const [tab, setTab] = useState("active");
+  const [tab, setTab] = useState("groups");
   const data = useOpenOrdersData(tab, t);
   const filters = useOrderFilters(data.orders);
   const { summary, error, setError } = data;
 
-  // Al pulsar un KPI de estado se filtra la pestaña de órdenes activas.
+  // Al pulsar un KPI de estado se filtran las órdenes activas (por secciones o en lista).
   const alternarEstado = (s) => {
-    setTab("active");
+    if (tab !== "groups") setTab("active");
     filters.alternarEstado(s);
   };
 
@@ -55,8 +56,18 @@ export default function OpenOrdersPage() {
         <Tabs
           active={tab}
           onChange={setTab}
-          tabs={[["active", t.tabs.active, data.orders.length], ["events", t.tabs.events], ["closed", t.tabs.closed]]}
+          tabs={[
+            ["groups", t.tabs.groups, data.orders.length], ["active", t.tabs.active],
+            ["events", t.tabs.events], ["closed", t.tabs.closed],
+          ]}
         />
+
+        {tab === "groups" && (
+          <>
+            <OrderFiltersBar filters={filters} total={data.orders.length} t={t} />
+            <StatusSections orders={filters.filtradas} t={t} />
+          </>
+        )}
 
         {tab === "active" && (
           <>

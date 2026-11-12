@@ -1,13 +1,11 @@
-"""Estado, prioridad y alerta de cada orden para una fecha dada (el "hoy" del usuario)."""
+"""Estado, prioridad y alerta de cada orden para una fecha dada (el "hoy" del usuario).
+La regla del estado (determine_status) vive en app/shared/wiesner/status.py: también la usa Routing."""
 from datetime import date
 from typing import Dict, List, Optional
 
-from app.modules.open_orders.config import ATTENTION_DAYS
 from app.modules.open_orders.rules.cfrm import cfrm_type
 from app.shared.dates import parse_date
-from app.shared.wiesner import customer_code, routing_window
-
-STATUS_ORDER = ["OVERDUE", "LAST DAY", "ATTENTION", "SAFE", "TOO EARLY", "ROUTED"]
+from app.shared.wiesner import STATUS_ORDER, customer_code, determine_status, routing_window
 
 PRIORITY = {
     "OVERDUE": "CRITICAL",
@@ -26,23 +24,6 @@ ALERT = {
     "ATTENTION": "Deadline Approaching",
     "TOO EARLY": "Window Not Open Yet",
 }
-
-
-def determine_status(deadline: Optional[date], earliest: Optional[date], cfrm: str, today: date) -> str:
-    if cfrm and cfrm.strip():
-        return "ROUTED"
-    if deadline is None:
-        return ""
-    if earliest and today < earliest:
-        return "TOO EARLY"
-    dias = (deadline - today).days
-    if dias < 0:
-        return "OVERDUE"
-    if dias == 0:
-        return "LAST DAY"
-    if dias <= ATTENTION_DAYS:
-        return "ATTENTION"
-    return "SAFE"
 
 
 def evaluar(order: Dict, today: date) -> Dict:

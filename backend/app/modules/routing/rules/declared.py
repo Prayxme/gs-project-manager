@@ -4,10 +4,11 @@ import math
 from app.modules.routing import config
 
 
-def familia(codigo: str) -> str:
-    """Con quién puede compartir RTS una PO: solo con su mismo cliente.
-    BURL y MODE son ambos Burlington, pero se enrutan en portales distintos: van separados."""
-    return codigo
+def familia(cust: str) -> str:
+    """Con quién puede compartir RTS una PO: solo con su mismo Customer No.
+    BURL120, BURL240 y BURL150 son divisiones de Burlington que se enrutan por separado (igual en
+    las demás tiendas); BURL y MODE, además, se enrutan en portales distintos."""
+    return (cust or "").strip().upper()
 
 
 def cft_declarado(codigo: str, pallets: int) -> int:

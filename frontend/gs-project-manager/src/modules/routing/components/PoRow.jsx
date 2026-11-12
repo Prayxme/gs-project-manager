@@ -28,6 +28,15 @@ export default function PoRow({ po, t }) {
         <td className="py-1.5 text-right">
           <CopyValue value={po.pallets} className="text-brand-ink" />
           <div className="text-[11px] text-muted whitespace-nowrap">{fmt(t.cols.estimated, { n: po.estimated_pallets })}</div>
+          {po.last_pallet_fill !== null && po.last_pallet_fill !== undefined && (
+            <div
+              className={`text-[11px] whitespace-nowrap ${po.margin_reduced ? "font-bold text-amber-700 dark:text-amber-300" : "text-muted"}`}
+              title={t.lastPalletHint}
+            >
+              {fmt(t.lastPallet, { p: Math.round(po.last_pallet_fill * 100) })}
+              {po.margin_reduced && ` · ${t.marginReduced}`}
+            </div>
+          )}
         </td>
       </tr>
       {po.issues.length > 0 && (

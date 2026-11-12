@@ -18,9 +18,11 @@ LIMITE_PALLETS_DEFECTO = 28
 # ROSS / DDSD: un RTS debe declarar al menos esta cantidad de lb (ver rules/min_weight.py).
 PESO_MINIMO_LB = {"ROSS": 3100, "DDSD": 3100}
 
-# Urgente: fecha límite vencida, hoy o dentro de estos días (igual que "ATTENTION" en el Monitor).
-DIAS_URGENTE = 3
-
 # Clientes cuyos 2 primeros dígitos de la PO indican el DC: solo se juntan POs del mismo prefijo.
 PREFIJO_PO_DC = ("TJMA", "MARS", "NEWT")
 LARGO_PREFIJO_PO = 2
+
+# Margen: si el pallet menos lleno de la estimación lleva este porcentaje (o menos) de lo que
+# llevan en promedio los demás, casi no cuenta como pallet: se suma un pallet menos de margen.
+ULTIMA_PALLET_BAJA = 0.35
+MARGEN_MINIMO = 1                   # el margen nunca baja de un pallet

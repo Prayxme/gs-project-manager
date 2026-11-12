@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { fmt } from "../../../shared/i18n/format";
 import { packOrder } from "../services/palletApi";
 import { agruparPallets, buildPackingPayload } from "../utils/palletUtils";
@@ -10,7 +10,7 @@ export function usePacking(t) {
   const [grupoSeleccionadoIdx, setGrupoSeleccionadoIdx] = useState(0);
 
   // onGenerated() se llama apenas hay pallets (antes de cualquier aviso).
-  const calcular = async (orderInfo, items, onGenerated) => {
+  const calcular = useCallback(async (orderInfo, items, onGenerated) => {
     setLoading(true);
     try {
       const data = await packOrder(buildPackingPayload(orderInfo, items));
@@ -27,7 +27,7 @@ export function usePacking(t) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   return {
     loading, gruposPallets, grupoSeleccionadoIdx, setGrupoSeleccionadoIdx, calcular,

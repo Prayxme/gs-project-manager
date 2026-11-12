@@ -9,9 +9,11 @@ from sqlalchemy.pool import StaticPool
 from app.modules.routing import dependencies as routing_deps
 from app.modules.routing import router as routing_router
 from app.modules.routing import rules
-from app.modules.routing.services import PortalNoDisponible, construir_plan, leer_portal, plan_urgente
+from app.modules.routing.services import PortalNoDisponible, construir_plan, leer_portal, plan_seleccion
 from app.modules.routing.services import purchase_orders
+from app.modules.routing.services.estimate import Estimacion, estimar_pallets
 from app.shared.pick_ticket_catalog import PickTicketCatalog, fecha_del_archivo
+from app.shared.wiesner import URGENT_STATUSES
 
 HOY = date(2026, 11, 12)
 BURL = {"code": "512", "name": "BURLINGTON DC # 512", "street": "570 EAST MILL STREET",
@@ -68,7 +70,7 @@ def test_portal_manda_las_diferencias_excluyen_la_po():
 
 def test_ya_enrutada_en_wiesner_no_se_estima_solo_se_informa(monkeypatch):
     estimadas = []
-    monkeypatch.setattr(purchase_orders, "estimar_pallets", lambda po, items: estimadas.append(po) or (1, 0))
+    monkeypatch.setattr(purchase_orders, "estimar_pallets", lambda po, items: estimadas.append(po) or Estimacion(1))
     p = _plan([_orden("1", "A", 25), _orden("3", "C", 25)],
               [_fila("1", "A", 25), _fila("3", "C", 25, cfrm="RTS99")])
     assert estimadas == ["A"]                                   # la ya enrutada no se calcula
@@ -86,30 +88,73 @@ def _catalogo(*ordenes):
     return cat
 
 
-def test_urgentes_solo_sin_cfrm_y_con_fecha_limite_cercana():
+def test_seleccion_por_estado_y_customer_no():
     filas = [_fila("1", "A", 25),                                   # BURL cancel 11/17 -> límite hoy
              _fila("2", "B", 25, cfrm="RTS1"),                      # ya enrutada
-             {**_fila("3", "C", 25), "cancel_date": "12/20/26", "ship_date": "12/14/26"},   # lejos
+             {**_fila("3", "C", 25), "cancel_date": "12/20/26", "ship_date": "12/14/26"},   # muy pronto
              {**_fila("4", "D", 25, cust="MARS125"), "cancel_date": "11/14/26"},            # límite en 2 días
-             {**_fila("5", "E", 25, cust="MARS125"), "cancel_date": "11/10/26"}]            # vencida
-    u = rules.ordenes_urgentes(filas, HOY, 3)
-    assert [(x["po"], x["days_left"]) for x in u] == [("E", -2), ("A", 0), ("D", 2)]
-    assert [x["po"] for x in rules.ordenes_urgentes(filas, HOY, 0)] == ["E", "A"]
+             {**_fila("5", "E", 25, cust="MARS125"), "cancel_date": "11/10/26"},            # vencida
+             {**_fila("6", "F", 25, cust="MARS240"), "cancel_date": "11/10/26"}]            # vencida, otra división
+    u = rules.seleccionar(filas, HOY, URGENT_STATUSES)
+    assert [(x["po"], x["days_left"], x["status"]) for x in u] == [
+        ("E", -2, "OVERDUE"), ("F", -2, "OVERDUE"), ("A", 0, "LAST DAY"), ("D", 2, "ATTENTION")]
+    assert [x["po"] for x in rules.seleccionar(filas, HOY, ["OVERDUE"], "mars125")] == ["E"]
+    assert [x["po"] for x in rules.seleccionar(filas, HOY, ["TOO EARLY"])] == ["C"]
+    assert rules.seleccionar(filas, HOY, ["ROUTED"]) == []          # las enrutadas nunca se calculan
 
 
-def test_plan_urgente_usa_el_catalogo_y_avisa_lo_que_falta():
-    portal = {"orders": {f["pick_ticket"]: f for f in [_fila("1", "A", 25), _fila("2", "B", 50),
-                                                       _fila("3", "C", 25, cfrm="RTS1")]}, "error": None}
-    p = plan_urgente(_catalogo(_orden("1", "A", 25), _orden("3", "C", 25)), portal, HOY, 3)
-    assert p["urgent"] == 2 and p["scope"] == "urgent"
+def _portal(*filas):
+    return {"orders": {f["pick_ticket"]: f for f in filas}, "error": None}
+
+
+def test_plan_de_seleccion_usa_el_catalogo_y_avisa_lo_que_falta():
+    portal = _portal(_fila("1", "A", 25), _fila("2", "B", 50), _fila("3", "C", 25, cfrm="RTS1"))
+    p = plan_seleccion(_catalogo(_orden("1", "A", 25), _orden("3", "C", 25)), portal, HOY, URGENT_STATUSES)
+    assert p["selection"] == {"statuses": list(URGENT_STATUSES), "cust": "", "orders": 2, "ignored": 0}
     assert [x["po"] for x in p["rts"][0]["pos"]] == ["A"]
-    assert [(m["po"], m["ctns"]) for m in p["missing"]] == [("B", "50")]   # urgente sin Pick Ticket
+    assert [(m["po"], m["ctns"]) for m in p["missing"]] == [("B", "50")]   # sin Pick Ticket
     assert p["already_routed"] == []                                # la enrutada ni se considera
 
 
-def test_plan_urgente_sin_portal_falla_claro():
+def test_pdf_subido_con_seleccion_solo_aporta_las_ordenes_de_interes():
+    portal = _portal(_fila("1", "A", 25), _fila("2", "B", 50), _fila("9", "Z", 25, cust="BURL240"))
+    pdf = {"filename": "nuevo.pdf", "warnings": [],
+           "orders": [_orden("2", "B", 50), _orden("9", "Z", 25, cust="BURL240")]}
+    p = plan_seleccion(_catalogo(_orden("1", "A", 25)), portal, HOY, ["LAST DAY"], "BURL120", [pdf])
+    assert sorted(x["po"] for x in p["rts"][0]["pos"]) == ["A", "B"]       # catálogo + PDF subido
+    assert p["missing"] == [] and p["selection"]["ignored"] == 1    # Z es de otro Customer No
+    # Sin base de datos (catálogo opcional) el PDF subido basta.
+    p = plan_seleccion(None, portal, HOY, ["LAST DAY"], "BURL120", [pdf])
+    assert [x["po"] for x in p["rts"][0]["pos"]] == ["B"] and [m["po"] for m in p["missing"]] == ["A"]
+
+
+def test_plan_de_seleccion_sin_portal_falla_claro():
     with pytest.raises(PortalNoDisponible):
-        plan_urgente(_catalogo(), {"orders": None, "error": "caído"}, HOY, 3)
+        plan_seleccion(_catalogo(), {"orders": None, "error": "caído"}, HOY, URGENT_STATUSES)
+
+
+def test_divisiones_de_la_misma_tienda_no_comparten_rts():
+    p = _plan([_orden("1", "A", 25), _orden("2", "B", 25, cust="BURL240")],
+              [_fila("1", "A", 25), _fila("2", "B", 25, cust="BURL240")])
+    assert sorted(r["family"] for r in p["rts"]) == ["BURL120", "BURL240"]
+
+
+def test_ultima_pallet_casi_vacia_reduce_el_margen(monkeypatch):
+    monkeypatch.setattr(purchase_orders, "estimar_pallets", lambda po, items: Estimacion(4, 0, 0.3))
+    [po] = _plan([_orden("1", "A", 25)], [_fila("1", "A", 25)])["rts"][0]["pos"]
+    assert (po["estimated_pallets"], po["pallets"], po["margin_reduced"], po["last_pallet_fill"]) == (4, 5, True, 0.3)
+    monkeypatch.setattr(purchase_orders, "estimar_pallets", lambda po, items: Estimacion(4, 0, 0.8))
+    [po] = _plan([_orden("1", "A", 25)], [_fila("1", "A", 25)])["rts"][0]["pos"]
+    assert (po["pallets"], po["margin_reduced"]) == (6, False)
+
+
+def test_estimacion_mide_el_pallet_menos_lleno_y_la_po_lleva_sus_lineas():
+    assert estimar_pallets("A", [{**CAJA, "qty": 25}]).ultima_llena is None      # un solo pallet
+    e = estimar_pallets("A", [{**CAJA, "qty": 300}])
+    assert e.pallets > 1 and 0 < e.ultima_llena <= 1
+    [po] = _plan([_orden("1", "A", 25)], [_fila("1", "A", 25)])["rts"][0]["pos"]
+    assert po["items"] == [{"sku": "S1", "qty": 25, "l": 12.992, "w": 21.654, "h": 19.685,
+                            "weight": 19.621, "piktik": "1"}]
 
 
 def test_fecha_del_nombre_del_archivo():
@@ -164,6 +209,14 @@ def test_endpoint_plan(monkeypatch):
         cliente.post("/api/routing/plan", data={"today": "2026-11-12"},
                      files=[("files", ("oe_piktik_X-20261112-103329am-1.pdf", b"%PDF", "application/pdf"))])
         u = cliente.get("/api/routing/urgent", params={"today": "2026-11-12"}).json()
-        assert u["urgent"] == 1 and u["missing"] == [] and u["rts"][0]["pos"][0]["po"] == "A"
+        assert u["selection"]["orders"] == 1 and u["missing"] == [] and u["rts"][0]["pos"][0]["po"] == "A"
+        sel = cliente.get("/api/routing/selection", params={"today": "2026-11-12", "status": "LAST DAY",
+                                                            "cust": "BURL120"}).json()
+        assert sel["summary"]["routable"] == 1
+        assert cliente.get("/api/routing/selection", params={"status": "ROUTED"}).status_code == 422
+        # Subir un PDF con selección: las órdenes fuera de la selección se ignoran.
+        r = cliente.post("/api/routing/plan", data={"today": "2026-11-12", "status": "OVERDUE"},
+                         files=[("files", ("x.pdf", b"%PDF", "application/pdf"))]).json()
+        assert r["selection"]["ignored"] == 1 and r["rts"] == []
     finally:
         app.dependency_overrides.clear()

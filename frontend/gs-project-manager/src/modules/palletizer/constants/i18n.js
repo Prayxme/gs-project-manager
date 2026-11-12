@@ -51,7 +51,13 @@ export const I18N = {
     pdfError: "Error parsing PDF:",
     errorPrefix: "Error:",
     unplacedWarn: "Warning: {n} boxes could not be placed (they do not fit on the pallet).",
-    noPallets: "No pallets generated with these parameters."
+    noPallets: "No pallets generated with these parameters.",
+    marginLabel: "Margin",
+    previewBuilt: "Built",
+    previewMargin: "Margin",
+    previewRoute: "To route",
+    previewTotal: "Total",
+    previewHint: "The “Margin” layout shows the empty pallets routed above what the engine built."
   },
   es: {
     palletStandard: "Pallet Estándar US (48\" x 40\")",
@@ -105,6 +111,12 @@ export const I18N = {
     pdfError: "Error leyendo el PDF:",
     errorPrefix: "Error:",
     unplacedWarn: "Atención: {n} cajas no pudieron colocarse (no caben en el pallet).",
-    noPallets: "No se pudieron generar pallets con estos parámetros."
+    noPallets: "No se pudieron generar pallets con estos parámetros.",
+    marginLabel: "Margen",
+    previewBuilt: "Armadas",
+    previewMargin: "Margen",
+    previewRoute: "A enrutar",
+    previewTotal: "Total",
+    previewHint: "El layout «Margen» son los pallets vacíos que se enrutan por encima de lo que armó el motor."
   }
 };

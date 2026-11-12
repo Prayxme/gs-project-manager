@@ -3,6 +3,7 @@ import { fmt } from "../../../shared/i18n/format";
 import { addressLine, usDate } from "../utils/format";
 import DeadlineBadge from "./DeadlineBadge";
 import PoRow from "./PoRow";
+import ViewPalletsButton from "./ViewPalletsButton";
 
 const COLUMNAS = ["po", "piktik", "cust", "units", "cartons", "weight", "cft", "pallets"];
 const NUMERICAS = new Set(["units", "cartons", "weight", "cft", "pallets"]);
@@ -28,6 +29,7 @@ export default function RtsCard({ rts, t }) {
           </span>
           <DeadlineBadge deadline={rts.deadline} daysLeft={rts.days_left} t={t} />
           {!rts.verified && <Badge className="bg-amber-400 text-slate-900">{t.unverified}</Badge>}
+          <ViewPalletsButton rts={rts} t={t} />
         </div>
       </header>
 

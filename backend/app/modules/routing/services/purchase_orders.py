@@ -7,7 +7,7 @@ from datetime import date
 from typing import Dict, List, Optional
 
 from app.modules.routing import rules
-from app.modules.routing.services.estimate import estimar_pallets
+from app.modules.routing.services.estimate import Estimacion, estimar_pallets, lineas_validas
 from app.shared.dates import parse_date
 from app.shared.wiesner import customer_code, routing_window
 
@@ -62,10 +62,10 @@ def armar_po(po: str, piktiks: List[Dict], portal: Optional[Dict[str, Dict]], ho
     # Solo se estima lo que se va a enrutar: una PO ya enrutada en Wiesner (o con diferencias)
     # no necesita cálculo, solo se informa.
     enrutable = estado in ("OK", rules.UNVERIFIED)
-    estimado, no_caben = estimar_pallets(po, items) if enrutable else (0, 0)
-    if no_caben:
-        avisos.append(f"{no_caben} cajas no caben en un pallet de 85 in (revisar dimensiones)")
-    pallets = rules.pallets_a_enrutar(estimado)
+    est = estimar_pallets(po, items) if enrutable else Estimacion()
+    if est.no_caben:
+        avisos.append(f"{est.no_caben} cajas no caben en un pallet de 85 in (revisar dimensiones)")
+    pallets = rules.pallets_a_enrutar(est.pallets, est.ultima_llena)
     peso_cajas = sum(_peso_cajas(pk) for pk in piktiks)
     unidades = [pk["declared_units"] for pk in piktiks]
 
@@ -74,7 +74,7 @@ def armar_po(po: str, piktiks: List[Dict], portal: Optional[Dict[str, Dict]], ho
         "piktiks": [pk["piktik"] for pk in piktiks],
         "cust": cust,
         "customer_code": codigo,
-        "family": rules.familia(codigo),
+        "family": rules.familia(cust),
         "ship_date": _iso(ship),
         "cancel_date": _iso(cancel),
         "deadline": deadline.isoformat() if deadline else "",
@@ -85,8 +85,11 @@ def armar_po(po: str, piktiks: List[Dict], portal: Optional[Dict[str, Dict]], ho
         "units": sum(unidades) if all(u is not None for u in unidades) else None,
         "cartons": sum(_cartones(pk) for pk in piktiks),
         "cases_weight": round(peso_cajas, 1),
-        "estimated_pallets": estimado,
+        "estimated_pallets": est.pallets,
         "pallets": pallets,
+        # Llenado del pallet menos lleno frente al promedio de los demás, y si por eso bajó el margen.
+        "last_pallet_fill": est.ultima_llena,
+        "margin_reduced": pallets < est.pallets + rules.margen_base(est.pallets),
         "weight": rules.peso_declarado(peso_cajas, pallets) if enrutable else 0,
         "cft": rules.cft_declarado(codigo, pallets),
         "status": estado,
@@ -95,4 +98,7 @@ def armar_po(po: str, piktiks: List[Dict], portal: Optional[Dict[str, Dict]], ho
         "cfrm_number": next((f["cfrm_number"] for f in filas if (f.get("cfrm_number") or "").strip()), ""),
         "cfrm_date": _iso(fila.get("cfrm_date", "")),
         "appt_date": _iso(fila.get("appt_date", "")),
+        # Líneas de producto, para ver el armado de los pallets en el Paletizador 3D.
+        "items": [{"sku": i["sku"] or "SKU", "qty": i["qty"], "l": i["l"], "w": i["w"], "h": i["h"],
+                   "weight": i["weight"], "piktik": i["piktik"]} for i in lineas_validas(items)] if enrutable else [],
     }
