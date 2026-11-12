@@ -8,9 +8,11 @@ from app.modules.order_intake.repository import IntakeLog
 from app.modules.order_intake.sheets_client import SheetsGateway
 from app.shared.google.auth import GoogleNotAuthorized
 from app.shared.google.gmail import GmailReader
+from app.shared.pick_ticket_catalog import PickTicketCatalog
 
 get_log = repository_dependency(IntakeLog)
 get_inbox = repository_dependency(InboxRepository)
+get_catalog = repository_dependency(PickTicketCatalog)
 
 # Errores de Google -> 502 con un mensaje legible.
 GOOGLE_ERROR = (HttpError, 502, lambda e: f"Google respondió con error: {e.reason}")

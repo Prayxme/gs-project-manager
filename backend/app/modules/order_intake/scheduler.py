@@ -7,7 +7,7 @@ import asyncio
 import logging
 
 from app.modules.order_intake import config
-from app.modules.order_intake.dependencies import get_inbox
+from app.modules.order_intake.dependencies import get_catalog, get_inbox
 from app.modules.order_intake.services.gmail_sync import revisar_gmail
 from app.modules.order_intake.sheets_client import SheetsGateway
 from app.shared.google.gmail import GmailReader
@@ -16,7 +16,7 @@ log = logging.getLogger("order_intake.scheduler")
 
 
 def _una_revision() -> dict:
-    return revisar_gmail(get_inbox(), GmailReader(), SheetsGateway())
+    return revisar_gmail(get_inbox(), GmailReader(), SheetsGateway(), catalogo=get_catalog())
 
 
 async def bucle_gmail() -> None:

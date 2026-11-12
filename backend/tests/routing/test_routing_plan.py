@@ -1,11 +1,17 @@
 """Plan de routing completo (PDFs ya leídos + portal falso) y endpoint /api/routing/plan."""
-from datetime import date
+from datetime import date, datetime, timezone
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 
 from app.modules.routing import dependencies as routing_deps
 from app.modules.routing import router as routing_router
-from app.modules.routing.services import construir_plan, leer_portal
+from app.modules.routing import rules
+from app.modules.routing.services import PortalNoDisponible, construir_plan, leer_portal, plan_urgente
+from app.modules.routing.services import purchase_orders
+from app.shared.pick_ticket_catalog import PickTicketCatalog, fecha_del_archivo
 
 HOY = date(2026, 11, 12)
 BURL = {"code": "512", "name": "BURLINGTON DC # 512", "street": "570 EAST MILL STREET",
@@ -53,11 +59,63 @@ def test_destinos_o_cancel_distintos_no_se_juntan():
 
 
 def test_portal_manda_las_diferencias_excluyen_la_po():
-    p = _plan([_orden("1", "A", 25), _orden("2", "B", 25), _orden("3", "C", 25), _orden("4", "D", 0)],
-              [_fila("1", "A", 30), _fila("3", "C", 25, cfrm="RTS99"), _fila("4", "D", 0)])
+    p = _plan([_orden("1", "A", 25), _orden("2", "B", 25), _orden("4", "D", 0)],
+              [_fila("1", "A", 30), _fila("4", "D", 0)])
     estados = {x["po"]: x["status"] for x in p["excluded"]}
-    assert estados == {"A": "MISMATCH", "B": "NOT_IN_PORTAL", "C": "ALREADY_ROUTED", "D": "NO_ITEMS"}
-    assert p["rts"] == []
+    assert estados == {"A": "MISMATCH", "B": "NOT_IN_PORTAL", "D": "NO_ITEMS"}
+    assert p["rts"] == [] and p["already_routed"] == []
+
+
+def test_ya_enrutada_en_wiesner_no_se_estima_solo_se_informa(monkeypatch):
+    estimadas = []
+    monkeypatch.setattr(purchase_orders, "estimar_pallets", lambda po, items: estimadas.append(po) or (1, 0))
+    p = _plan([_orden("1", "A", 25), _orden("3", "C", 25)],
+              [_fila("1", "A", 25), _fila("3", "C", 25, cfrm="RTS99")])
+    assert estimadas == ["A"]                                   # la ya enrutada no se calcula
+    [c] = p["already_routed"]
+    assert (c["po"], c["cfrm_number"], c["pallets"], c["status"]) == ("C", "RTS99", 0, "ALREADY_ROUTED")
+    assert p["excluded"] == [] and p["summary"]["already_routed"] == 1
+    assert [x["po"] for x in p["rts"][0]["pos"]] == ["A"]
+
+
+# --- urgentes del portal con el catálogo de Pick Tickets ---------------------------------------------
+def _catalogo(*ordenes):
+    cat = PickTicketCatalog(create_engine("sqlite://", poolclass=StaticPool,
+                                          connect_args={"check_same_thread": False}), create_tables=True)
+    cat.guardar("a.pdf", datetime(2026, 11, 12, tzinfo=timezone.utc), "gmail", list(ordenes))
+    return cat
+
+
+def test_urgentes_solo_sin_cfrm_y_con_fecha_limite_cercana():
+    filas = [_fila("1", "A", 25),                                   # BURL cancel 11/17 -> límite hoy
+             _fila("2", "B", 25, cfrm="RTS1"),                      # ya enrutada
+             {**_fila("3", "C", 25), "cancel_date": "12/20/26", "ship_date": "12/14/26"},   # lejos
+             {**_fila("4", "D", 25, cust="MARS125"), "cancel_date": "11/14/26"},            # límite en 2 días
+             {**_fila("5", "E", 25, cust="MARS125"), "cancel_date": "11/10/26"}]            # vencida
+    u = rules.ordenes_urgentes(filas, HOY, 3)
+    assert [(x["po"], x["days_left"]) for x in u] == [("E", -2), ("A", 0), ("D", 2)]
+    assert [x["po"] for x in rules.ordenes_urgentes(filas, HOY, 0)] == ["E", "A"]
+
+
+def test_plan_urgente_usa_el_catalogo_y_avisa_lo_que_falta():
+    portal = {"orders": {f["pick_ticket"]: f for f in [_fila("1", "A", 25), _fila("2", "B", 50),
+                                                       _fila("3", "C", 25, cfrm="RTS1")]}, "error": None}
+    p = plan_urgente(_catalogo(_orden("1", "A", 25), _orden("3", "C", 25)), portal, HOY, 3)
+    assert p["urgent"] == 2 and p["scope"] == "urgent"
+    assert [x["po"] for x in p["rts"][0]["pos"]] == ["A"]
+    assert [(m["po"], m["ctns"]) for m in p["missing"]] == [("B", "50")]   # urgente sin Pick Ticket
+    assert p["already_routed"] == []                                # la enrutada ni se considera
+
+
+def test_plan_urgente_sin_portal_falla_claro():
+    with pytest.raises(PortalNoDisponible):
+        plan_urgente(_catalogo(), {"orders": None, "error": "caído"}, HOY, 3)
+
+
+def test_fecha_del_nombre_del_archivo():
+    f = fecha_del_archivo("oe_piktik_00WPI_PM_BURL120-20261112-103329am-927419.pdf")
+    assert f.astimezone(timezone.utc) == datetime(2026, 11, 12, 15, 33, 29, tzinfo=timezone.utc)
+    assert fecha_del_archivo("otro.pdf") is None
 
 
 def test_una_po_en_varios_pikitks_se_suma():
@@ -89,11 +147,23 @@ def test_endpoint_plan(monkeypatch):
             + "</tr></table>")
     app.dependency_overrides[routing_deps.get_fetcher] = lambda: (lambda: html)
     try:
-        r = TestClient(app).post("/api/routing/plan", data={"today": "2026-11-12"},
-                                 files=[("files", ("x.pdf", b"%PDF", "application/pdf"))])
+        cliente = TestClient(app)
+        # Sin base de datos el plan de PDFs subidos funciona igual (el catálogo es opcional)...
+        r = cliente.post("/api/routing/plan", data={"today": "2026-11-12"},
+                         files=[("files", ("x.pdf", b"%PDF", "application/pdf"))])
         assert r.status_code == 200, r.text
         assert r.json()["summary"]["routable"] == 1 and r.json()["rts"][0]["pos"][0]["status"] == "OK"
-        r = TestClient(app).post("/api/routing/plan", files=[("files", ("x.txt", b"x", "text/plain"))])
-        assert r.status_code == 400
+        assert cliente.post("/api/routing/plan", files=[("files", ("x.txt", b"x", "text/plain"))]).status_code == 400
+        # ...y el de urgentes responde 503 porque sí lo necesita.
+        assert cliente.get("/api/routing/urgent").status_code == 503
+
+        # Con catálogo: el PDF subido queda guardado y luego sirve para el plan de urgentes.
+        catalogo = _catalogo()
+        app.dependency_overrides[routing_deps.get_catalog] = lambda: catalogo
+        app.dependency_overrides[routing_deps.get_catalog_opcional] = lambda: catalogo
+        cliente.post("/api/routing/plan", data={"today": "2026-11-12"},
+                     files=[("files", ("oe_piktik_X-20261112-103329am-1.pdf", b"%PDF", "application/pdf"))])
+        u = cliente.get("/api/routing/urgent", params={"today": "2026-11-12"}).json()
+        assert u["urgent"] == 1 and u["missing"] == [] and u["rts"][0]["pos"][0]["po"] == "A"
     finally:
         app.dependency_overrides.clear()

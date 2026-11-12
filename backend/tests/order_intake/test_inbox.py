@@ -11,6 +11,8 @@ from app.modules.order_intake.inbox_repository import InboxRepository
 from app.modules.order_intake.repository import IntakeLog
 from app.modules.order_intake.rules import inbox as reglas
 from app.modules.order_intake.services import analysis
+from app.shared.pick_ticket_catalog import PickTicketCatalog
+from app.shared.pick_ticket_catalog import service as catalogo_service
 
 ASUNTO = "PICK-TICKETS - 00WPI - Whse:PM - Cust:MARS125 - 2026-11-11"
 HOY = date(2026, 11, 12)
@@ -19,6 +21,7 @@ HOY = date(2026, 11, 12)
 @pytest.fixture(autouse=True)
 def lector_falso(monkeypatch):
     monkeypatch.setattr(analysis, "extraer_datos_pick_ticket", leer_pdf_falso)
+    monkeypatch.setattr(catalogo_service, "extraer_datos_pick_ticket", leer_pdf_falso)
 
 
 @pytest.fixture
@@ -90,6 +93,24 @@ def test_descartado_no_vuelve_solo_y_se_puede_restaurar(repo):
     assert services.inbox.listar(repo)["pending"] == 1
 
 
+# --- catálogo compartido de Pick Tickets -----------------------------------------------------------
+def test_los_pdfs_de_la_bandeja_pasan_al_catalogo(repo):
+    catalogo = PickTicketCatalog(motor_sqlite(), create_tables=True)
+    gw = FakeGateway({482: fila(6849411)})
+    services.revisar_gmail(repo, gmail_de_prueba(), gw, hoy=HOY, catalogo=catalogo)
+    assert set(catalogo.ordenes(["6849411", "6849500", "999"])) == {"6849411", "6849500"}
+    assert len(catalogo.archivos_conocidos()) == 3                       # el ilegible queda anotado
+    assert services.catalog_sync.sincronizar_catalogo(repo, catalogo) == 0   # no se vuelven a leer
+
+
+def test_catalogo_conserva_el_pdf_mas_reciente_de_un_pikitk():
+    catalogo = PickTicketCatalog(motor_sqlite(), create_tables=True)
+    nuevo, viejo = datetime(2026, 11, 12, tzinfo=timezone.utc), datetime(2026, 11, 10, tzinfo=timezone.utc)
+    catalogo.guardar("b.pdf", nuevo, "gmail", [{"piktik": "1", "po": "NUEVA"}])
+    assert catalogo.guardar("a.pdf", viejo, "upload", [{"piktik": "1", "po": "VIEJA"}]) == 0
+    assert catalogo.ordenes(["1"])["1"]["po"] == "NUEVA"
+
+
 # --- API ---------------------------------------------------------------------------------------
 @pytest.fixture
 def cliente(repo):
@@ -97,8 +118,9 @@ def cliente(repo):
 
     gw = FakeGateway({482: fila(6849411)})
     log = IntakeLog(motor_sqlite(), create_tables=True)
+    catalogo = PickTicketCatalog(motor_sqlite(), create_tables=True)
     app.dependency_overrides.update({
-        deps.get_inbox: lambda: repo, deps.get_log: lambda: log,
+        deps.get_inbox: lambda: repo, deps.get_log: lambda: log, deps.get_catalog: lambda: catalogo,
         deps.get_gateway: lambda: gw, deps.get_gmail: gmail_de_prueba,
     })
     with TestClient(app) as c:

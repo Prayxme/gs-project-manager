@@ -4,6 +4,7 @@ from datetime import date
 from typing import Callable, Dict, List, Optional
 
 from app.modules.routing import rules
+from app.modules.routing.rules.reconcile import ALREADY_ROUTED
 from app.modules.routing.services.purchase_orders import NO_ITEMS, armar_po
 from app.shared.wiesner.portal import parse_table
 
@@ -58,7 +59,8 @@ def _rts(clave, pos: List[Dict], numero: int) -> Dict:
     }
 
 
-def construir_plan(pdfs: List[Dict], portal: Dict, hoy: date) -> Dict:
+def construir_plan(pdfs: List[Dict], portal: Dict, hoy: date, faltantes: Optional[List[Dict]] = None) -> Dict:
+    """`faltantes`: órdenes urgentes del portal de las que no se tiene el Pick Ticket (solo se informan)."""
     avisos: List[str] = []
     ordenes = portal["orders"]
     pos = [armar_po(po, pks, ordenes, hoy) for po, pks in _piktiks_por_po(pdfs, avisos).items()]
@@ -78,7 +80,11 @@ def construir_plan(pdfs: List[Dict], portal: Dict, hoy: date) -> Dict:
                                  -sum(p["pallets"] for p in cb[1])))
     rts = [_rts(clave, b, n) for n, (clave, b) in enumerate(bloques, start=1)]
 
-    excluidas = sorted((p for p in pos if p["status"] in no_enrutables), key=lambda p: (p["status"], p["po"]))
+    # Ya enrutadas en Wiesner: no se estiman, solo se informan. El resto de no enrutables son problemas.
+    ya_enrutadas = sorted((p for p in pos if p["status"] == ALREADY_ROUTED), key=lambda p: p["po"])
+    excluidas = sorted((p for p in pos if p["status"] in no_enrutables and p["status"] != ALREADY_ROUTED),
+                       key=lambda p: (p["status"], p["po"]))
+    faltantes = faltantes or []
     return {
         "today": hoy.isoformat(),
         "portal": {"ok": ordenes is not None, "error": portal["error"],
@@ -87,11 +93,15 @@ def construir_plan(pdfs: List[Dict], portal: Dict, hoy: date) -> Dict:
             "pdfs": len(pdfs),
             "pos": len(pos),
             "routable": sum(len(r["pos"]) for r in rts),
+            "already_routed": len(ya_enrutadas),
             "excluded": len(excluidas),
+            "missing": len(faltantes),
             "rts": len(rts),
             "pallets": sum(r["pallets"] for r in rts),
         },
         "rts": rts,
+        "already_routed": ya_enrutadas,
         "excluded": excluidas,
+        "missing": faltantes,
         "warnings": avisos,
     }

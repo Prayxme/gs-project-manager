@@ -11,9 +11,11 @@ from app.modules.order_intake import config
 from app.modules.order_intake.inbox_repository import InboxRepository
 from app.modules.order_intake.rules import inbox as reglas
 from app.modules.order_intake.services.analysis import clasificar_pdf, leer_contexto
+from app.modules.order_intake.services.catalog_sync import sincronizar_catalogo
 from app.modules.order_intake.sheets_client import SheetsGateway
 from app.shared.dates import utc_now
 from app.shared.google.gmail import GmailReader
+from app.shared.pick_ticket_catalog import PickTicketCatalog
 
 log = logging.getLogger("order_intake.gmail")
 _lock = threading.Lock()  # una revisión a la vez (botón manual y revisión automática)
@@ -64,11 +66,22 @@ def comparar_pendientes(repo: InboxRepository, gateway: SheetsGateway) -> int:
     return len(items)
 
 
+def _al_catalogo(repo: InboxRepository, catalogo: Optional[PickTicketCatalog]) -> None:
+    """El catálogo es un servicio para otros módulos: si falla, la bandeja sigue funcionando."""
+    if catalogo is None:
+        return
+    try:
+        sincronizar_catalogo(repo, catalogo)
+    except Exception as e:
+        log.warning("Catálogo de Pick Tickets: %s", e)
+
+
 def revisar_gmail(repo: InboxRepository, gmail: GmailReader, gateway: SheetsGateway,
-                  hoy: Optional[date] = None) -> Dict:
+                  hoy: Optional[date] = None, catalogo: Optional[PickTicketCatalog] = None) -> Dict:
     with _lock:
         try:
             nuevos = _guardar_nuevos(repo, gmail, hoy or datetime.now().date())
+            _al_catalogo(repo, catalogo)
             revisados = comparar_pendientes(repo, gateway)
         except Exception as e:
             ultima_revision.update(at=utc_now(), ok=False, error=str(e), new=0)

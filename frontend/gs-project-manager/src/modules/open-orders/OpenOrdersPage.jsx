@@ -9,6 +9,7 @@ import CaliforniaClock from "./components/CaliforniaClock";
 import KpiBar from "./components/KpiBar";
 import OrderFiltersBar from "./components/OrderFiltersBar";
 import RefreshControls from "./components/RefreshControls";
+import RouteUrgentLink from "./components/RouteUrgentLink";
 import { I18N, rowStyle } from "./constants";
 import { useOpenOrdersData } from "./hooks/useOpenOrdersData";
 import { useOrderFilters } from "./hooks/useOrderFilters";
@@ -34,6 +35,7 @@ export default function OpenOrdersPage() {
       <div className="max-w-[1800px] mx-auto px-3 sm:px-5 py-4 sm:py-5 space-y-4">
         <PageHeader title={t.title} subtitle={`${t.lastUpdate}: ${ultima ? formatShortDateTime(ultima) : t.never}`}>
           <CaliforniaClock label={t.caTime} />
+          <RouteUrgentLink summary={summary} t={t} />
           <RefreshControls
             summary={summary}
             refrescando={data.refrescando}

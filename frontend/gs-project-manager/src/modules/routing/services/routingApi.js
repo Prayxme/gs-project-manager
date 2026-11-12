@@ -9,3 +9,7 @@ export function planRouting(files, today) {
   fd.append("today", today);
   return request("/plan", { method: "POST", body: fd }, { requireBody: true });
 }
+
+// Órdenes del portal sin routing que vencen hoy o pronto, con los Pick Tickets ya recibidos.
+export const urgentPlan = (today) =>
+  request(`/urgent?today=${encodeURIComponent(today)}`, {}, { requireBody: true });

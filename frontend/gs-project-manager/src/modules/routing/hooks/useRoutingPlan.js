@@ -1,22 +1,32 @@
 import { useCallback, useState } from "react";
 import { contextoLocal } from "../../../shared/utils/dates";
-import { planRouting } from "../services/routingApi";
+import { planRouting, urgentPlan } from "../services/routingApi";
 
-// PDFs elegidos -> plan de RTS. "Hoy" es la fecha del navegador (como en el Monitor).
+// Plan de RTS desde PDFs subidos o desde las órdenes urgentes del portal.
+// "Hoy" es la fecha del navegador (como en el Monitor).
 export function useRoutingPlan({ t, task }) {
   const [plan, setPlan] = useState(null);
   const [files, setFiles] = useState([]);
+  const { run } = task;
 
   const subir = useCallback(
     async (lista) => {
-      const r = await task.run(t.working, () => planRouting(lista, contextoLocal().today));
+      const r = await run(t.working, () => planRouting(lista, contextoLocal().today));
       if (r) {
         setPlan(r);
         setFiles(lista.map((f) => f.name));
       }
     },
-    [t.working, task],
+    [t.working, run],
   );
 
-  return { plan, files, subir };
+  const cargarUrgentes = useCallback(async () => {
+    const r = await run(t.workingUrgent, () => urgentPlan(contextoLocal().today));
+    if (r) {
+      setPlan(r);
+      setFiles([]);
+    }
+  }, [t.workingUrgent, run]);
+
+  return { plan, files, subir, cargarUrgentes };
 }

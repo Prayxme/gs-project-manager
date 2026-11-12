@@ -53,18 +53,21 @@ def armar_po(po: str, piktiks: List[Dict], portal: Optional[Dict[str, Dict]], ho
         avisos.append("No se pudo leer la dirección SHIP TO completa: esta PO no se agrupa con otras")
 
     items = [{**i, "piktik": pk["piktik"]} for pk in piktiks for i in pk["items"]]
-    estimado, no_caben = estimar_pallets(po, items)
-    if no_caben:
-        avisos.append(f"{no_caben} cajas no caben en un pallet de 85 in (revisar dimensiones)")
-    pallets = rules.pallets_a_enrutar(estimado)
-    peso_cajas = sum(_peso_cajas(pk) for pk in piktiks)
-    unidades = [pk["declared_units"] for pk in piktiks]
-
     estado = next((e for e in estados if e in rules.EXCLUIDOS), None)
     if estado is None and not items:
         estado, avisos = NO_ITEMS, avisos + ["El PDF no trae líneas de producto (dimensiones): no se puede estimar"]
     if estado is None:
         estado = rules.UNVERIFIED if portal is None else "OK"
+
+    # Solo se estima lo que se va a enrutar: una PO ya enrutada en Wiesner (o con diferencias)
+    # no necesita cálculo, solo se informa.
+    enrutable = estado in ("OK", rules.UNVERIFIED)
+    estimado, no_caben = estimar_pallets(po, items) if enrutable else (0, 0)
+    if no_caben:
+        avisos.append(f"{no_caben} cajas no caben en un pallet de 85 in (revisar dimensiones)")
+    pallets = rules.pallets_a_enrutar(estimado)
+    peso_cajas = sum(_peso_cajas(pk) for pk in piktiks)
+    unidades = [pk["declared_units"] for pk in piktiks]
 
     return {
         "po": po,
@@ -84,8 +87,12 @@ def armar_po(po: str, piktiks: List[Dict], portal: Optional[Dict[str, Dict]], ho
         "cases_weight": round(peso_cajas, 1),
         "estimated_pallets": estimado,
         "pallets": pallets,
-        "weight": rules.peso_declarado(peso_cajas, pallets),
+        "weight": rules.peso_declarado(peso_cajas, pallets) if enrutable else 0,
         "cft": rules.cft_declarado(codigo, pallets),
         "status": estado,
         "issues": avisos,
+        # Routing que ya figura en el portal de Wiesner (si lo hay).
+        "cfrm_number": next((f["cfrm_number"] for f in filas if (f.get("cfrm_number") or "").strip()), ""),
+        "cfrm_date": _iso(fila.get("cfrm_date", "")),
+        "appt_date": _iso(fila.get("appt_date", "")),
     }

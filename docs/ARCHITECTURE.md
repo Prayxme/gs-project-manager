@@ -32,6 +32,8 @@ app/
 │   ├── google/             credenciales OAuth (auth.py, config.py) y lectura de Gmail (gmail.py)
 │   ├── pick_ticket/        lector del PDF de Pick Tickets (patterns, item_line, page, parser, schemas,
 │   │                       ship_to_block = columna SHIP TO por posición, address = dirección y su clave)
+│   ├── pick_ticket_catalog/ catálogo de Pick Tickets ya leídos, por PikTik (schema `pick_tickets`):
+│   │                       lo alimenta Ingreso de Órdenes (Gmail) y lo usa Routing (órdenes urgentes)
 │   ├── packing/            motor de empaque de pallets (models, layer_patterns, placement,
 │   │                       group_packer, physics_engine, config): Paletizador y Routing
 │   └── wiesner/            customers.py (código de cliente, ventana de routing; MODE = BURL) y
@@ -53,7 +55,13 @@ Módulos actuales:
 |---|---|---|
 | `palletizer` | `/api/palletizer` | `services/packing_service` (entrada; el motor está en `shared/packing`) |
 | `open_orders` | `/api/open-orders` | `rules/` (cfrm, status, changes), `services/` (refresh, views, history_import), `scheduler` (portal en `shared/wiesner`) |
-| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping), `services/` (estimate, purchase_orders, plan), `config` (reglas de RTS) |
+| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping, urgency), `services/` (estimate, purchase_orders, plan, urgent), `config` (reglas de RTS). `POST /plan` (PDFs subidos) y `GET /urgent` (órdenes urgentes del portal con el catálogo) |
+
+Los módulos se enlazan en la interfaz solo por URL (p. ej. el Monitor abre `../routing?scope=urgent`);
+los datos que comparten pasan por `shared` (catálogo de Pick Tickets, portal), nunca por imports entre módulos.
+
+Las pruebas no pueden abrir la base de datos real (`tests/conftest.py` lo bloquea): cada prueba crea
+su repositorio sobre SQLite.
 | `order_intake` | `/api/order-intake` | `rules/` (columns, received, revision, inbox), `services/` (analysis, writer, gmail_sync, inbox), `sheets_client`, `inbox_repository`, `inbox_router`, `scheduler` (revisión de Gmail) |
 
 ### Agregar un módulo de backend

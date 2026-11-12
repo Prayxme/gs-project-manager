@@ -6,12 +6,13 @@ from fastapi.responses import Response
 
 from app.core.errors import http_errors
 from app.modules.order_intake import services
-from app.modules.order_intake.dependencies import GOOGLE_ERROR, get_gateway, get_gmail, get_inbox
+from app.modules.order_intake.dependencies import GOOGLE_ERROR, get_catalog, get_gateway, get_gmail, get_inbox
 from app.modules.order_intake.inbox_repository import InboxRepository
 from app.modules.order_intake.rules import inbox as reglas
 from app.modules.order_intake.services.inbox import InboxItemNotFound
 from app.modules.order_intake.sheets_client import SheetsGateway
 from app.shared.google.gmail import GmailReader
+from app.shared.pick_ticket_catalog import PickTicketCatalog
 
 router = APIRouter(prefix="/inbox")
 NO_EXISTE = (InboxItemNotFound, 404, None)
@@ -25,10 +26,10 @@ def listar(all: bool = False, repo: InboxRepository = Depends(get_inbox)):
 
 @router.post("/check")
 def revisar_ahora(repo: InboxRepository = Depends(get_inbox), gmail: GmailReader = Depends(get_gmail),
-                  gw: SheetsGateway = Depends(get_gateway)):
+                  gw: SheetsGateway = Depends(get_gateway), catalogo: PickTicketCatalog = Depends(get_catalog)):
     """Busca correos nuevos en Gmail y vuelve a comparar los pendientes con la hoja."""
     with http_errors(GOOGLE_ERROR):
-        return services.revisar_gmail(repo, gmail, gw)
+        return services.revisar_gmail(repo, gmail, gw, catalogo=catalogo)
 
 
 @router.post("/{item_id}/analyze")
