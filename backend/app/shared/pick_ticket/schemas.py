@@ -19,6 +19,18 @@ class ParsedItem(BaseModel):
     containers: List[str] = []
 
 
+class ShipTo(BaseModel):
+    """Destino del PO (columna SHIP TO del PDF). `key` = calle + código postal normalizados."""
+    code: str = ""
+    name: str = ""
+    street: str = ""
+    city: str = ""
+    state: str = ""
+    zip: str = ""
+    text: str = ""
+    key: str = ""
+
+
 class ParsedOrder(BaseModel):
     piktik: str
     po: str
@@ -32,7 +44,11 @@ class ParsedOrder(BaseModel):
     ship_to_dc: str = ""
     destination: str = ""
     pages: int = 1
+    ship_to: Optional[ShipTo] = None
+    declared_units: Optional[int] = None
     declared_cases: Optional[int] = None
+    declared_weight: Optional[float] = None
+    declared_cft: Optional[float] = None
     items: List[ParsedItem]
 
 

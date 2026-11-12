@@ -3,6 +3,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.shared.containers import find_containers
+from app.shared.pick_ticket.address import parse_ship_to
 from app.shared.pick_ticket.item_line import parse_item_line, to_int
 from app.shared.pick_ticket.patterns import (
     RE_BOX, RE_CITY, RE_PIKTIK, RE_PO_ROW, RE_SHIP_DC, RE_STORE_DC, RE_TOTAL,
@@ -33,8 +34,16 @@ def _encabezado(text: str) -> Dict[str, Any]:
         "ship_to_dc": dc_m.group(1) if dc_m else "",
         # La primera ciudad suele ser el SOLD TO (Framingham); el destino es la última.
         "destination": f"{cities[-1][0].strip()}, {cities[-1][1]}" if cities else "",
-        "declared_cases": to_int(tot_m.group(1)) if tot_m else None,
+        # Línea TOTAL (solo en la última página del PikTik): unidades, cartones, lb y CFT.
+        "declared_units": to_int(tot_m.group(1)) if tot_m else None,
+        "declared_cases": to_int(tot_m.group(2)) if tot_m else None,
+        "declared_weight": _decimal(tot_m.group(3)) if tot_m else None,
+        "declared_cft": _decimal(tot_m.group(4)) if tot_m else None,
     }
+
+
+def _decimal(s: Optional[str]) -> Optional[float]:
+    return float(s.replace(",", "")) if s else None
 
 
 def _cartones_respaldo(lines: List[str], idx: int) -> int:
@@ -77,8 +86,9 @@ def _items(lines: List[str]) -> List[Dict[str, Any]]:
     return items
 
 
-def parse_page(text: str) -> Optional[Dict[str, Any]]:
-    """Datos de una página, o None si no tiene número de PikTik."""
+def parse_page(text: str, ship_to_lines: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
+    """Datos de una página, o None si no tiene número de PikTik.
+    ship_to_lines: columna SHIP TO leída por posición (ver ship_to_block); opcional."""
     m = RE_PIKTIK.search(text)
     if not m:
         return None
@@ -88,5 +98,6 @@ def parse_page(text: str) -> Optional[Dict[str, Any]]:
         "page_no": int(m.group(3)),
         "company": _empresa(lines),
         **_encabezado(text),
+        "ship_to": parse_ship_to(ship_to_lines),
         "items": _items(lines),
     }

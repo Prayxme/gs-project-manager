@@ -10,31 +10,37 @@ Salida: una orden por PikTik, con PO, DC, destino, fechas, contenedores y todas
 sus líneas de SKU, acumuladas a través de sus páginas.
 """
 import io
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pdfplumber
 
 from app.shared.pick_ticket.page import parse_page
+from app.shared.pick_ticket.ship_to_block import ship_to_lines
 
 CAMPOS_ORDEN = ("po", "cust_no", "company", "order_no", "order_date", "ship_date", "cancel_date",
-                "ship_to_dc", "destination")
+                "ship_to_dc", "destination", "ship_to")
+# Datos de la línea TOTAL: valen los de la última página del PikTik.
+CAMPOS_TOTAL = ("declared_units", "declared_cases", "declared_weight", "declared_cft")
 
 
 def extraer_datos_pick_ticket(content: bytes) -> Dict[str, Any]:
     """PDF (bytes) -> {company, cust_no, orders[], warnings[]}."""
     with pdfplumber.open(io.BytesIO(content)) as pdf:
         pages_text = [(p.extract_text() or "") for p in pdf.pages]
-    return parsear_paginas(pages_text)
+        bloques = [ship_to_lines(p.extract_words()) for p in pdf.pages]
+    return parsear_paginas(pages_text, bloques)
 
 
-def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
+def parsear_paginas(pages_text: List[str],
+                    ship_to_por_pagina: Optional[List[Optional[List[str]]]] = None) -> Dict[str, Any]:
     """Agrupa las páginas por PikTik y devuelve una orden por PikTik."""
     warnings: List[str] = []
     orders: Dict[str, Dict[str, Any]] = {}
     company = ""
+    bloques = ship_to_por_pagina or [None] * len(pages_text)
 
-    for n, text in enumerate(pages_text, start=1):
-        page = parse_page(text)
+    for n, (text, bloque) in enumerate(zip(pages_text, bloques), start=1):
+        page = parse_page(text, bloque)
         if page is None:
             warnings.append(f"Página {n}: no se encontró el número de PikTik; se omitió.")
             continue
@@ -47,7 +53,8 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
         # Un PikTik puede ocupar varias páginas ("Page" 1, 2, 3...): el TOTAL de cartones válido es
         # el de su ÚLTIMA página (la de número más alto), sin importar el orden dentro del archivo.
         if page["declared_cases"] is not None and page["page_no"] >= order["_total_page"]:
-            order["declared_cases"] = page["declared_cases"]
+            for campo in CAMPOS_TOTAL:
+                order[campo] = page[campo]
             order["_total_page"] = page["page_no"]
         order["items"].extend(page["items"])
 
@@ -72,7 +79,7 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
 
 def _orden_vacia(page: Dict[str, Any]) -> Dict[str, Any]:
     return {"piktik": page["piktik"], **{c: page[c] for c in CAMPOS_ORDEN},
-            "pages": 0, "declared_cases": None, "_total_page": 0, "items": []}
+            "pages": 0, **{c: None for c in CAMPOS_TOTAL}, "_total_page": 0, "items": []}
 
 
 def _desambiguar_skus(items: List[Dict[str, Any]]) -> None:

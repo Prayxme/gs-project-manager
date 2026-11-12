@@ -16,5 +16,10 @@ RE_CITY = re.compile(r"([A-Z][A-Z .'\-]+?),+\s*([A-Z]{2})\s+(\d{5})")
 RE_BOX = re.compile(
     r"BOX LxWxH:\s*([\d.]+)\s*x\s*([\d.]+)\s*x\s*([\d.]+)\s*IN,\s*([\d.,]+)\s*LB", re.IGNORECASE
 )
-RE_TOTAL = re.compile(r"^TOTAL:\s*[\d,]+\s+([\d,]+)\s+TOT WEIGHT", re.MULTILINE)
+# "TOTAL: 1200 25 TOT WEIGHT: 490.5 LB TOT DIMENSION: 80.13 CFT" -> unidades, cartones, lb, CFT
+RE_TOTAL = re.compile(
+    r"^TOTAL:\s*([\d,]+)\s+([\d,]+)\s+TOT WEIGHT:?\s*([\d,.]+)?\s*(?:LB)?"
+    r"(?:\s*TOT DIMENSION:?\s*([\d,.]+))?",
+    re.MULTILINE,
+)
 RE_NUM = re.compile(r"^[\d,]+$")
