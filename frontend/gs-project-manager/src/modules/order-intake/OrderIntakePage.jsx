@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, PageHeader, Tabs } from "../../shared/components";
+import { Alert, InfoPanel, PageHeader, Tabs } from "../../shared/components";
 import { useBusyTask } from "../../shared/hooks/useBusyTask";
 import { useTranslations } from "../../shared/settings";
 import InboxTab from "./components/InboxTab";
@@ -42,6 +42,7 @@ export default function OrderIntakePage() {
     <div className="h-full overflow-y-auto">
       <div className="max-w-[1800px] mx-auto px-3 sm:px-5 py-4 sm:py-5 space-y-4 pb-28 md:pb-5">
         <PageHeader title={t.title} subtitle={t.subtitle} />
+        <InfoPanel id="order-intake" title={t.info.title} sections={t.info.sections} />
 
         <Alert onClose={() => task.setError("")}>{task.error}</Alert>
         <Alert kind="success" onClose={() => setNotice("")}>{notice}</Alert>

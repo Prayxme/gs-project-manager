@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import CanonicalPath from "../routing/CanonicalPath";
 import Navbar from "./Navbar";
+import Signature from "./Signature";
 
 // Marco de la plataforma: barra superior + página del almacén/cliente/módulo activo.
 export default function Layout() {
@@ -14,6 +15,7 @@ export default function Layout() {
             <Outlet />
           </Suspense>
         </main>
+        <Signature />
       </div>
     </CanonicalPath>
   );

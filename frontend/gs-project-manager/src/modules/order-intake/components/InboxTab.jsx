@@ -9,7 +9,6 @@ export default function InboxTab({ inbox, onReview, busy, t }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm max-w-3xl text-muted">{t.inbox.intro}</p>
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4">
         <button className="btn-primary" disabled={!!busy} onClick={revisarAhora}>
           {busy === t.inbox.checking ? t.inbox.checking : t.inbox.checkNow}

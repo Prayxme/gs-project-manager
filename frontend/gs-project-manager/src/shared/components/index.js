@@ -4,5 +4,6 @@ export { default as Badge } from "./Badge";
 export { default as CopyValue } from "./CopyValue";
 export { default as DataTable } from "./DataTable";
 export { default as FileButton } from "./FileButton";
+export { default as InfoPanel } from "./InfoPanel";
 export { default as PageHeader } from "./PageHeader";
 export { default as Tabs } from "./Tabs";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, DataTable, FileButton, PageHeader, Tabs } from "../../shared/components";
+import { Alert, DataTable, FileButton, InfoPanel, PageHeader, Tabs } from "../../shared/components";
 import { useTranslations } from "../../shared/settings";
 import { formatShortDateTime } from "../../shared/utils/dates";
 import { activeColumns } from "./columns/activeColumns";
@@ -50,6 +50,8 @@ export default function OpenOrdersPage() {
           {(error || ultimaFallo) && `${t.errorPrefix}: ${error || ultimaFallo}`}
         </Alert>
         <Alert kind="success" onClose={() => data.setAviso("")}>{data.aviso}</Alert>
+
+        <InfoPanel id="open-orders" title={t.info.title} sections={t.info.sections} />
 
         <KpiBar summary={summary} t={t} statusFilter={filters.statusFilter} onToggleStatus={alternarEstado} />
 

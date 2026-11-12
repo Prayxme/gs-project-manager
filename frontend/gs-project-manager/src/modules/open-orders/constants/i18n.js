@@ -18,6 +18,43 @@ export const I18N = {
       "TOO EARLY": "la ventana de routing todavía no abre",
       ROUTED: "ya tienen Cfrm Number",
     },
+    info: {
+      title: "Estados y reglas",
+      sections: [
+        {
+          title: "Pendientes urgentes",
+          items: [
+            ["Vencidas", "La fecha límite de routing ya pasó."],
+            ["Último día", "Hoy es el último día para enrutar."],
+            ["Atención", "Faltan 3 días o menos."],
+          ],
+        },
+        {
+          title: "Sin urgencia",
+          items: [
+            ["A tiempo", "Faltan más de 3 días."],
+            ["Muy pronto", "La ventana de routing todavía no abre."],
+            ["Enrutadas", "Ya tienen Cfrm Number."],
+          ],
+        },
+        {
+          title: "Fecha límite y ventana",
+          items: [
+            ["BURL · MODE", "Límite = Cancel Date − 5 días (nunca antes del Ship Date)."],
+            ["Resto", "Límite = Cancel Date."],
+            ["Ventana", "Abre 21 días antes del Ship Date en BURL, MODE, ROSS y DDSD; 7 días en MACY."],
+          ],
+        },
+        {
+          title: "Enrutar desde aquí",
+          items: [
+            ["Enrutar", "Abre Routing con las órdenes de ese estado y Customer No."],
+            ["Enrutar todas", "Lleva todas las órdenes del estado."],
+            ["Customer No", "BURL120, BURL240... se enrutan por separado."],
+          ],
+        },
+      ],
+    },
     groupCount: "{n} órdenes · {c} cartones",
     routeGroup: "Enrutar",
     routeSection: "Enrutar todas",
@@ -66,6 +103,43 @@ export const I18N = {
       SAFE: "more than 3 days left",
       "TOO EARLY": "the routing window is not open yet",
       ROUTED: "already have a Cfrm Number",
+    },
+    info: {
+      title: "Statuses and rules",
+      sections: [
+        {
+          title: "Urgent",
+          items: [
+            ["Overdue", "The routing deadline has passed."],
+            ["Last day", "Today is the last day to route."],
+            ["Attention", "3 days or less left."],
+          ],
+        },
+        {
+          title: "Not urgent",
+          items: [
+            ["Safe", "More than 3 days left."],
+            ["Too early", "The routing window is not open yet."],
+            ["Routed", "Already have a Cfrm Number."],
+          ],
+        },
+        {
+          title: "Deadline and window",
+          items: [
+            ["BURL · MODE", "Deadline = Cancel Date − 5 days (never before the Ship Date)."],
+            ["Others", "Deadline = Cancel Date."],
+            ["Window", "Opens 21 days before the Ship Date for BURL, MODE, ROSS and DDSD; 7 days for MACY."],
+          ],
+        },
+        {
+          title: "Route from here",
+          items: [
+            ["Route", "Opens Routing with the orders of that status and Customer No."],
+            ["Route all", "Takes every order in the status."],
+            ["Customer No", "BURL120, BURL240... are routed separately."],
+          ],
+        },
+      ],
     },
     groupCount: "{n} orders · {c} cartons",
     routeGroup: "Route",

@@ -92,12 +92,14 @@ src/
 │   │                       clientes y qué módulos tiene cada cliente; redirecciones de rutas viejas)
 │   ├── routing/            paths.js (construir/validar URLs), breadcrumbs.js, CanonicalPath (minúsculas)
 │   ├── i18n.js             textos del shell (almacenes, clientes, módulos)
-│   ├── components/         Layout, Navbar, Breadcrumbs, LanguageSwitch, ThemeToggle, NavCard, CardGridPage
+│   ├── components/         Layout, Navbar, Signature (firma al pie), Breadcrumbs, LanguageSwitch, ThemeToggle,
+│   │                       NavCard, CardGridPage
 │   └── pages/              WarehousesPage (/), WarehousePage, ClientPage, ComingSoonPage, NotFound
 ├── shared/                 reutilizable por todos los módulos
 │   ├── api/                createApiClient(prefijo), jsonBody, fileBody, API_BASE_URL
 │   ├── settings/           AppSettingsProvider, useAppSettings, useTranslations
-│   ├── components/         Alert, Badge, CopyValue, DataTable, FileButton, PageHeader, Tabs (index.js)
+│   ├── components/         Alert, Badge, CopyValue, DataTable, FileButton, InfoPanel (explicación y reglas
+│   │                       de un módulo), PageHeader, Tabs (index.js)
 │   ├── handoff/            carga que un módulo deja para que otro la muestre (palletPreview: un RTS
 │   │                       de Routing visto en el Paletizador 3D, con la URL para regresar)
 │   ├── hooks/              useBusyTask (ocupado + error de una tarea asíncrona)

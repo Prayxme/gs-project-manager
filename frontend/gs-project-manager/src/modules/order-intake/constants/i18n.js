@@ -1,10 +1,36 @@
 export const I18N = {
   es: {
     title: "Ingreso de Órdenes",
-    subtitle: "Los PDFs de Pick Tickets llegan solos desde Gmail (o súbelos a mano): la app detecta qué órdenes son nuevas, cuáles ya están registradas y cuáles cambiaron, y las escribe en la hoja de control cuando las apruebas.",
+    subtitle: "Registra en la hoja de control las órdenes que llegan en los PDFs de Pick Tickets.",
+    info: {
+      title: "Cómo funciona",
+      sections: [
+        {
+          title: "De dónde llegan",
+          items: [
+            ["Gmail", "Los PDFs de Pick Tickets llegan solos y se guardan en la bandeja."],
+            ["A mano", "También puedes subir los PDFs en «Revisar»."],
+          ],
+        },
+        {
+          title: "Qué se revisa",
+          items: [
+            ["Nueva", "Órdenes que todavía no están en la hoja."],
+            ["Ya registrada", "Ya están en la hoja: no se repiten."],
+            ["Revisión", "Están en la hoja pero el PDF trae datos distintos."],
+          ],
+        },
+        {
+          title: "Qué se escribe",
+          items: [
+            ["Aprobación", "Nada se escribe en la hoja sin tu aprobación."],
+            ["Revisar", "Abre el PDF de la bandeja para aprobarlo."],
+          ],
+        },
+      ],
+    },
     tabs: { inbox: "Bandeja Gmail", review: "Revisar PDF", suggestions: "Sugerencias de Received", log: "Historial" },
     inbox: {
-      intro: "Los PDFs de Pick Tickets que llegan a Gmail se guardan aquí y se comparan con la hoja. Nada se escribe sin tu aprobación: abre uno con «Revisar».",
       checkNow: "📬 Revisar Gmail ahora",
       checking: "Revisando Gmail...",
       lastCheck: "Última revisión",
@@ -45,10 +71,36 @@ export const I18N = {
   },
   en: {
     title: "Order Intake",
-    subtitle: "Pick Ticket PDFs arrive from Gmail on their own (or upload them manually): the app detects which orders are new, already registered or changed, and writes them to the control sheet once you approve.",
+    subtitle: "Records in the control sheet the orders that arrive in Pick Ticket PDFs.",
+    info: {
+      title: "How it works",
+      sections: [
+        {
+          title: "Where they come from",
+          items: [
+            ["Gmail", "Pick Ticket PDFs arrive on their own and are stored in the inbox."],
+            ["Manually", "You can also upload the PDFs under “Review”."],
+          ],
+        },
+        {
+          title: "What is checked",
+          items: [
+            ["New", "Orders that are not in the sheet yet."],
+            ["Already registered", "Already in the sheet: not repeated."],
+            ["Revision", "In the sheet, but the PDF has different data."],
+          ],
+        },
+        {
+          title: "What is written",
+          items: [
+            ["Approval", "Nothing is written to the sheet without your approval."],
+            ["Review", "Opens the inbox PDF so you can approve it."],
+          ],
+        },
+      ],
+    },
     tabs: { inbox: "Gmail inbox", review: "Review PDF", suggestions: "Received suggestions", log: "History" },
     inbox: {
-      intro: "Pick Ticket PDFs that arrive in Gmail are stored here and compared with the sheet. Nothing is written without your approval: open one with “Review”.",
       checkNow: "📬 Check Gmail now",
       checking: "Checking Gmail...",
       lastCheck: "Last check",

@@ -71,12 +71,6 @@ export default function Viewport3D({ palletData, isDarkMode, t, grupoSeleccionad
             <p className="text-xs tracking-widest uppercase font-extrabold text-muted">{t.awaitingParameters}</p>
           </div>
         )}
-
-        <p className="hidden sm:block absolute bottom-3 w-full text-center pointer-events-none text-[11px] font-semibold tracking-wide leading-tight text-muted/70">
-          {t.watermarkDeveloper}
-          <br />
-          {t.watermarkCompany}
-        </p>
       </div>
     </div>
   );

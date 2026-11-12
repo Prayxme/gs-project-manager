@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useLocation, useNavigationType, useSearchParams } from "react-router-dom";
-import { Alert, FileButton, PageHeader } from "../../shared/components";
+import { Alert, FileButton, InfoPanel, PageHeader } from "../../shared/components";
 import { useBusyTask } from "../../shared/hooks/useBusyTask";
 import { useTranslations } from "../../shared/settings";
 import AlreadyRoutedList from "./components/AlreadyRoutedList";
@@ -51,6 +51,8 @@ export default function RoutingPage() {
           </FileButton>
         </PageHeader>
 
+        <InfoPanel id="routing" title={t.info.title} sections={t.info.sections} />
+
         <SelectionBar
           seleccion={seleccion}
           plan={plan}
@@ -73,7 +75,6 @@ export default function RoutingPage() {
             <AlreadyRoutedList pos={plan.already_routed} t={t} />
           </>
         )}
-        <p className="text-[11px] text-muted">{t.rules}</p>
       </div>
     </div>
   );

@@ -1,8 +1,49 @@
 export const I18N = {
   es: {
     title: "Routing (RTS)",
-    subtitle:
-      "Sube los PDFs de Pick Tickets o llega desde el Monitor con un grupo de órdenes: cada PO se concilia con el portal de Wiesner, se estiman sus pallets (con margen) y se agrupan en RTS por Customer No, dirección SHIP TO y Cancel Date. Haz clic en cualquier valor para copiarlo.",
+    subtitle: "Estima los pallets de cada PO y propone los RTS, conciliado con el portal de Wiesner.",
+    info: {
+      title: "Cómo funciona y reglas",
+      sections: [
+        {
+          title: "Cómo se usa",
+          items: [
+            ["1", "Sube los PDFs de Pick Tickets o llega desde el Monitor con un grupo de órdenes."],
+            ["2", "Cada PO se concilia con el portal: PO, PikTik y cartones deben coincidir."],
+            ["3", "Se estiman sus pallets, se suma el margen y se reparten en RTS."],
+            ["4", "Haz clic en un valor para copiarlo. «Ver pallets en 3D» muestra el armado."],
+          ],
+        },
+        {
+          title: "Qué POs comparten RTS",
+          items: [
+            ["Customer No", "El mismo, completo (BURL120 ≠ BURL240)."],
+            ["SHIP TO", "La misma dirección del PDF."],
+            ["Cancel Date", "La misma fecha."],
+            ["TJMA · MARS · NEWT", "Además, los mismos 2 primeros dígitos de la PO."],
+            ["Máximo", "28 pallets por RTS; 26 en ROSS y DDSD."],
+          ],
+        },
+        {
+          title: "Margen sobre lo estimado",
+          items: [
+            ["1 a 2 pallets", "+1"],
+            ["3 a 10", "+2"],
+            ["11 a 20", "+3"],
+            ["Más de 20", "+15 %"],
+            ["Última pallet ≤ 35 %", "Una pallet menos de margen (nunca menos de +1)."],
+          ],
+        },
+        {
+          title: "Valores a declarar",
+          items: [
+            ["LB", "Peso de las cajas + 45 lb por pallet."],
+            ["CFT", "90 × pallets en BURL y MODE; 130 × pallets en el resto."],
+            ["ROSS · DDSD", "Si el RTS no llega a 3100 lb, una PO declara 3100."],
+          ],
+        },
+      ],
+    },
     upload: "📄 Subir PDFs de Pick Tickets",
     urgentButton: "⚡ Urgentes del monitor",
     working: "Leyendo PDFs, consultando el portal y estimando pallets...",
@@ -15,8 +56,7 @@ export const I18N = {
     clearSelection: "Quitar selección",
     selectionIntro: "{n} órdenes del portal sin routing en esta selección; {m} sin Pick Ticket.",
     selectionIgnored: "{n} órdenes de los PDFs subidos no son de esta selección y se ignoraron.",
-    selectionUploadHint:
-      "Se usan los Pick Tickets ya recibidos. Si falta alguno, sube sus PDFs: de cada PDF solo se toman las órdenes de esta selección.",
+    selectionUploadHint: "Si falta algún Pick Ticket, sube su PDF: solo se toman las órdenes de esta selección.",
     viewPallets: "Ver pallets en 3D",
     backToRouting: "Volver a Routing",
     lastPallet: "última pallet al {p} %",
@@ -58,13 +98,52 @@ export const I18N = {
       NOT_IN_PORTAL: "No está en el portal", ALREADY_ROUTED: "Ya tiene Cfrm", NO_ITEMS: "PDF sin líneas",
     },
     warnings: "Avisos de lectura ({n})",
-    rules:
-      "Reglas: solo se juntan POs del mismo Customer No, dirección SHIP TO y Cancel Date · margen sobre lo estimado (1→2, 2→3, 3–10 +2, 11–20 +3, >20 +15 %); si la última pallet va al 35 % o menos de las demás, un pallet menos de margen · LB = cajas + 45 lb por pallet · CFT = 90 × pallets (BURL/MODE) o 130 × pallets · máx. 28 pallets por RTS (26 ROSS/DDSD) · ROSS/DDSD mínimo 3100 lb por RTS.",
   },
   en: {
     title: "Routing (RTS)",
-    subtitle:
-      "Upload Pick Ticket PDFs or arrive from the Monitor with a group of orders: each PO is reconciled with the Wiesner portal, its pallets are estimated (with margin) and grouped into RTS by Customer No, SHIP TO address and Cancel Date. Click any value to copy it.",
+    subtitle: "Estimates the pallets of each PO and proposes the RTS, reconciled with the Wiesner portal.",
+    info: {
+      title: "How it works and rules",
+      sections: [
+        {
+          title: "How to use it",
+          items: [
+            ["1", "Upload Pick Ticket PDFs or arrive from the Monitor with a group of orders."],
+            ["2", "Each PO is reconciled with the portal: PO, PikTik and cartons must match."],
+            ["3", "Its pallets are estimated, the margin is added and they are split into RTS."],
+            ["4", "Click a value to copy it. “View pallets in 3D” shows the build."],
+          ],
+        },
+        {
+          title: "Which POs share an RTS",
+          items: [
+            ["Customer No", "The same, in full (BURL120 ≠ BURL240)."],
+            ["SHIP TO", "The same address in the PDF."],
+            ["Cancel Date", "The same date."],
+            ["TJMA · MARS · NEWT", "Also the same first 2 digits of the PO."],
+            ["Maximum", "28 pallets per RTS; 26 for ROSS and DDSD."],
+          ],
+        },
+        {
+          title: "Margin over the estimate",
+          items: [
+            ["1 to 2 pallets", "+1"],
+            ["3 to 10", "+2"],
+            ["11 to 20", "+3"],
+            ["Over 20", "+15%"],
+            ["Last pallet ≤ 35%", "One margin pallet less (never below +1)."],
+          ],
+        },
+        {
+          title: "Values to declare",
+          items: [
+            ["LB", "Carton weight + 45 lb per pallet."],
+            ["CFT", "90 × pallets for BURL and MODE; 130 × pallets for the rest."],
+            ["ROSS · DDSD", "If the RTS is under 3100 lb, one PO declares 3100."],
+          ],
+        },
+      ],
+    },
     upload: "📄 Upload Pick Ticket PDFs",
     urgentButton: "⚡ Urgent from monitor",
     working: "Reading PDFs, checking the portal and estimating pallets...",
@@ -77,8 +156,7 @@ export const I18N = {
     clearSelection: "Remove selection",
     selectionIntro: "{n} portal orders without routing in this selection; {m} without Pick Ticket.",
     selectionIgnored: "{n} orders in the uploaded PDFs are not in this selection and were ignored.",
-    selectionUploadHint:
-      "Pick Tickets already received are used. If any is missing, upload its PDFs: only the orders of this selection are taken from each PDF.",
+    selectionUploadHint: "If a Pick Ticket is missing, upload its PDF: only the orders of this selection are taken.",
     viewPallets: "View pallets in 3D",
     backToRouting: "Back to Routing",
     lastPallet: "last pallet at {p}%",
@@ -120,7 +198,5 @@ export const I18N = {
       NOT_IN_PORTAL: "Not in the portal", ALREADY_ROUTED: "Already has Cfrm", NO_ITEMS: "PDF without lines",
     },
     warnings: "Reading warnings ({n})",
-    rules:
-      "Rules: only POs with the same Customer No, SHIP TO address and Cancel Date share an RTS · margin over the estimate (1→2, 2→3, 3–10 +2, 11–20 +3, >20 +15%); if the last pallet is at 35% or less of the others, one margin pallet less · LB = cartons + 45 lb per pallet · CFT = 90 × pallets (BURL/MODE) or 130 × pallets · max 28 pallets per RTS (26 ROSS/DDSD) · ROSS/DDSD minimum 3100 lb per RTS.",
   },
 };
