@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './app/App.jsx'
-import { AppSettingsProvider } from './app/AppSettings.jsx'
+import { AppSettingsProvider } from './shared/settings'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

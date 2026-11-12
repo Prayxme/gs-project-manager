@@ -1,35 +1,10 @@
-import { Suspense } from "react";
-import { Link, Outlet, Route, Routes } from "react-router-dom";
-import Navbar from "../shared/components/Navbar";
-import { useAppSettings } from "./AppSettings";
-import Home from "./Home";
-import { APP_I18N } from "./i18n";
+import { Route, Routes } from "react-router-dom";
+import Layout from "./components/Layout";
 import { MODULES } from "./modules";
+import Home from "./pages/Home";
+import NotFound from "./pages/NotFound";
 
-function Layout() {
-  return (
-    <div className="flex flex-col h-dvh w-full overflow-hidden bg-canvas text-ink transition-colors duration-200">
-      <Navbar />
-      <main className="flex-1 overflow-hidden">
-        <Suspense fallback={null}>
-          <Outlet />
-        </Suspense>
-      </main>
-    </div>
-  );
-}
-
-function NotFound() {
-  const { lang } = useAppSettings();
-  const t = APP_I18N[lang];
-  return (
-    <div className="h-full flex flex-col items-center justify-center gap-3">
-      <p className="text-muted">{t.notFound}</p>
-      <Link to="/" className="font-bold text-brand">{t.backHome}</Link>
-    </div>
-  );
-}
-
+// Rutas de la plataforma: inicio + una ruta por módulo registrado en modules.js.
 export default function App() {
   return (
     <Routes>

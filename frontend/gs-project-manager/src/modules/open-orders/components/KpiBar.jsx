@@ -1,4 +1,4 @@
-import { STATUSES, STATUS_STYLE } from "../constants";
+import { STATUSES, STATUS_STYLE } from "../constants/status";
 
 // Indicadores. Los de estado funcionan como filtro rápido al hacer clic.
 export default function KpiBar({ summary, t, statusFilter, onToggleStatus }) {

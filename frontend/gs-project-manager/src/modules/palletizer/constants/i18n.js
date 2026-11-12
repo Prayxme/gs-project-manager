@@ -47,7 +47,11 @@ export const I18N = {
     modalWarnings: "Parser warnings",
     destinationDc: "DC",
     tabCargo: "Cargo",
-    tab3d: "3D view"
+    tab3d: "3D view",
+    pdfError: "Error parsing PDF:",
+    errorPrefix: "Error:",
+    unplacedWarn: "Warning: {n} boxes could not be placed (they do not fit on the pallet).",
+    noPallets: "No pallets generated with these parameters."
   },
   es: {
     palletStandard: "Pallet Estándar US (48\" x 40\")",
@@ -97,6 +101,10 @@ export const I18N = {
     modalWarnings: "Advertencias del lector",
     destinationDc: "DC",
     tabCargo: "Carga",
-    tab3d: "Vista 3D"
+    tab3d: "Vista 3D",
+    pdfError: "Error leyendo el PDF:",
+    errorPrefix: "Error:",
+    unplacedWarn: "Atención: {n} cajas no pudieron colocarse (no caben en el pallet).",
+    noPallets: "No se pudieron generar pallets con estos parámetros."
   }
 };

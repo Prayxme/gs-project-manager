@@ -1,9 +1,3 @@
-export const STATUS_STYLE = {
-  NEW: "bg-brand text-on-brand",
-  REVISION: "bg-amber-400 text-slate-900",
-  REGISTERED: "bg-surface-3 text-muted",
-};
-
 export const I18N = {
   es: {
     title: "Ingreso de Órdenes",
@@ -60,5 +54,3 @@ export const I18N = {
     pdfWarn: "PDF reader warnings",
   },
 };
-
-export const fmt = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");

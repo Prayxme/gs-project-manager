@@ -1,42 +1,10 @@
-import { API_BASE_URL } from "../../../shared/api";
+import { createApiClient, fileBody, jsonBody } from "../../../shared/api";
 
-const BASE_URL = `${API_BASE_URL}/order-intake`;
+const request = createApiClient("/order-intake");
 
-async function request(path, options = {}) {
-  let response;
-  try {
-    response = await fetch(`${BASE_URL}${path}`, options);
-  } catch (netErr) {
-    throw new Error("No se pudo conectar con el servidor backend.", { cause: netErr });
-  }
-  const texto = await response.text();
-  let data;
-  try {
-    data = texto ? JSON.parse(texto) : null;
-  } catch {
-    data = null;
-  }
-  if (!response.ok) {
-    const d = data?.detail;
-    throw new Error((typeof d === "string" && d) || (d && JSON.stringify(d)) || texto || `HTTP ${response.status}`);
-  }
-  return data;
-}
-
-const json = (body) => ({
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(body),
-});
-
-export function analyzePdf(file) {
-  const fd = new FormData();
-  fd.append("file", file);
-  return request("/analyze", { method: "POST", body: fd });
-}
-
-export const checkOrders = (orders) => request("/check", json({ orders }));
-export const applyOrders = (orders, sourceRef) => request("/apply", json({ orders, source_ref: sourceRef }));
+export const analyzePdf = (file) => request("/analyze", fileBody(file));
+export const checkOrders = (orders) => request("/check", jsonBody({ orders }));
+export const applyOrders = (orders, sourceRef) => request("/apply", jsonBody({ orders, source_ref: sourceRef }));
 export const getSuggestions = () => request("/suggestions");
 export const getLog = () => request("/log");
 

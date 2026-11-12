@@ -1,4 +1,6 @@
 """Flujo de análisis y escritura con una hoja simulada (sin Google)."""
+import re
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -94,8 +96,12 @@ def test_aplicar_escribe_nuevas_al_final_y_solo_celdas_cambiadas(log):
     nueva = gw.escrituras[0][2]
     assert nueva["G"] == "Yes" and nueva["D"] == "01347018" and nueva["V"] == 147
     assert ("UPDATE", 483, {"V": 75}) in gw.escrituras                  # solo la celda que cambió
-    acciones = [(x["piktik"], x["action"], x["sheet_row"]) for x in log.recientes()]
+    recientes = log.recientes()
+    acciones = [(x["piktik"], x["action"], x["sheet_row"]) for x in recientes]
     assert set(acciones) == {("6849999", "NEW", 484), ("6849412", "REVISION", 483)}
+    assert all(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", x["ts"]) for x in recientes)  # UTC con Z
+    nueva_log = next(x for x in recientes if x["action"] == "NEW")
+    assert nueva_log["details"]["H"] == "2026-11-06"                    # fechas en ISO dentro del detalle
 
 
 def test_aplicar_relee_la_hoja_y_no_duplica(log):

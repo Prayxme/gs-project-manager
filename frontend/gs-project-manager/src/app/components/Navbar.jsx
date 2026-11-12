@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { useAppSettings } from "../../app/AppSettings";
-import { APP_I18N } from "../../app/i18n";
-import { MODULES } from "../../app/modules";
+import { useTranslations } from "../../shared/settings";
+import { APP_I18N } from "../i18n";
+import { MODULES } from "../modules";
+import LanguageSwitch from "./LanguageSwitch";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
-  const { lang, setLang, isDarkMode, setIsDarkMode } = useAppSettings();
-  const t = APP_I18N[lang];
+  const t = useTranslations(APP_I18N);
   const { pathname } = useLocation();
   const moduloActual = MODULES.find((m) => pathname.startsWith(m.path));
 
@@ -50,26 +51,8 @@ export default function Navbar() {
               ← {t.home}
             </Link>
           )}
-          <div className="flex items-center rounded-full bg-black/20 p-0.5 text-[11px] font-extrabold">
-            {["en", "es"].map((code) => (
-              <button
-                key={code}
-                onClick={() => setLang(code)}
-                className={`px-2.5 py-1 rounded-full transition ${
-                  lang === code ? "bg-[#4C956C] text-white" : "text-on-header-muted hover:text-on-header"
-                }`}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            aria-label={isDarkMode ? "Light mode" : "Dark mode"}
-            className="w-9 h-9 grid place-items-center rounded-full bg-black/20 hover:bg-black/30 transition"
-          >
-            {isDarkMode ? t.lightMode : t.darkMode}
-          </button>
+          <LanguageSwitch />
+          <ThemeToggle />
         </div>
       </div>
     </header>
