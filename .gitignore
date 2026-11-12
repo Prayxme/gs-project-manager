@@ -40,3 +40,6 @@ backend/data/
 
 # Bitácora del proyecto (solo local)
 BITACORA.md
+
+# Credenciales y tokens de Google (OAuth)
+backend/secrets/

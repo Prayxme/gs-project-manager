@@ -15,9 +15,13 @@ from typing import Any, Dict, List, Optional
 import pdfplumber
 
 _RE_PIKTIK = re.compile(r"^(\d{2}/\d{2}/\d{4})\s+(\d{5,})\s+(\d+)\s*$", re.MULTILINE)
+# Fila "Order No | Order Date | Cust No | Rep | PO No | Ship Date | Cancel Date".
+# La PO puede ser alfanumérica (p. ej. S&JS: TR0926MN35).
 _RE_PO_ROW = re.compile(
-    r"^\d+\s+\d{2}/\d{2}/\d{4}\s+(\S+)\s+\d+\s+(\d+)\s+\d{2}/\d{2}/\d{4}", re.MULTILINE
+    r"^(\d+)\s+(\d{2}/\d{2}/\d{4})\s+(\S+)\s+\d+\s+(\S+)\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}/\d{2}/\d{4})",
+    re.MULTILINE,
 )
+_RE_CONTAINER = re.compile(r"\b([A-Z]{4}\d{7})\b")
 _RE_SHIP_DC = re.compile(r"SHIP TO:\s*(?:DC\s*#?\s*)?(\d+)", re.IGNORECASE)
 _RE_STORE_DC = re.compile(r"For STORE #:\s*(?:DC\s*#?\s*)?(\d+)", re.IGNORECASE)
 _RE_CITY = re.compile(r"([A-Z][A-Z .'\-]+?),+\s*([A-Z]{2})\s+(\d{5})")
@@ -77,8 +81,12 @@ def _parse_page(text: str) -> Optional[Dict[str, Any]]:
     page["company"] = company
 
     po_m = _RE_PO_ROW.search(text)
-    page["cust_no"] = po_m.group(1) if po_m else ""
-    page["po"] = po_m.group(2) if po_m else ""
+    page["order_no"] = po_m.group(1) if po_m else ""
+    page["order_date"] = po_m.group(2) if po_m else ""
+    page["cust_no"] = po_m.group(3) if po_m else ""
+    page["po"] = po_m.group(4) if po_m else ""
+    page["ship_date"] = po_m.group(5) if po_m else ""
+    page["cancel_date"] = po_m.group(6) if po_m else ""
 
     dc_m = _RE_SHIP_DC.search(text) or _RE_STORE_DC.search(text)
     page["ship_to_dc"] = dc_m.group(1) if dc_m else ""
@@ -112,9 +120,13 @@ def _parse_page(text: str) -> Optional[Dict[str, Any]]:
                         qty = _to_int(nums[-1])
                     break
 
+        # Contenedores (Container#:ETA) en la línea BOX, p. ej. "HAMU4749408:11/08, CSNU8090823:10/22".
+        contenedores = list(dict.fromkeys(_RE_CONTAINER.findall(l[bm.end():])))
+
         items.append(
             {
                 **info,
+                "containers": contenedores,
                 "qty": qty,
                 "l": float(bm.group(1)),
                 "w": float(bm.group(2)),
@@ -162,6 +174,11 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
                 "piktik": page["piktik"],
                 "po": page["po"],
                 "cust_no": page["cust_no"],
+                "company": page["company"],
+                "order_no": page["order_no"],
+                "order_date": page["order_date"],
+                "ship_date": page["ship_date"],
+                "cancel_date": page["cancel_date"],
                 "ship_to_dc": page["ship_to_dc"],
                 "destination": page["destination"],
                 "pages": 0,
@@ -170,7 +187,8 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
             },
         )
         order["pages"] += 1
-        for campo in ("po", "cust_no", "ship_to_dc", "destination"):
+        for campo in ("po", "cust_no", "company", "order_no", "order_date", "ship_date", "cancel_date",
+                      "ship_to_dc", "destination"):
             if not order[campo] and page[campo]:
                 order[campo] = page[campo]
         if page["declared_cases"] is not None:
@@ -180,6 +198,8 @@ def parsear_paginas(pages_text: List[str]) -> Dict[str, Any]:
     result_orders = list(orders.values())
     for o in result_orders:
         _desambiguar_skus(o["items"])
+        # Contenedores de la orden: unión de todas sus líneas, en orden de aparición.
+        o["containers"] = list(dict.fromkeys(c for it in o["items"] for c in it.get("containers", [])))
         if not o["po"]:
             warnings.append(f"PikTik {o['piktik']}: no se pudo leer la PO.")
         if not o["ship_to_dc"]:
