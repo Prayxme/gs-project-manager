@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.modules.open_orders import dependencies as oo_deps
 from app.modules.open_orders import services as service
-from app.modules.open_orders.parser import PortalResponseError, parse_table
+from app.shared.wiesner.portal import PortalResponseError, parse_table
 from app.modules.open_orders.repository import OpenOrdersRepository
 
 

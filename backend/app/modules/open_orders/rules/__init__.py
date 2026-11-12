@@ -5,9 +5,9 @@ from app.modules.open_orders.rules.changes import CAMPOS_VIGILADOS, detectar_cam
 from app.modules.open_orders.rules.status import (
     ALERT, PRIORITY, PRIORITY_RANK, STATUS_ORDER, determine_status, evaluar, ordenar,
 )
-from app.modules.open_orders.rules.window import customer_code, routing_window
 from app.shared.dates import parse_date as parse_mmddyy
 from app.shared.text import normalize_spaces as normalizar
+from app.shared.wiesner import customer_code, routing_window
 
 __all__ = [
     "ALERT", "CAMPOS_VIGILADOS", "PRIORITY", "PRIORITY_RANK", "STATUS_ORDER",

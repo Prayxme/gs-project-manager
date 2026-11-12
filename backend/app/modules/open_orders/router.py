@@ -8,9 +8,8 @@ from pydantic import BaseModel
 from app.core.errors import http_errors
 from app.modules.open_orders import services
 from app.modules.open_orders.dependencies import get_fetcher, get_repository
-from app.modules.open_orders.parser import PortalResponseError
-from app.modules.open_orders.portal_client import PortalAuthError
 from app.modules.open_orders.repository import OpenOrdersRepository
+from app.shared.wiesner.portal import PortalAuthError, PortalResponseError
 
 router = APIRouter(prefix="/api/open-orders", tags=["Órdenes Abiertas"])
 Repo = OpenOrdersRepository

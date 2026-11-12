@@ -11,7 +11,7 @@ from typing import Dict, List
 
 from bs4 import BeautifulSoup
 
-from app.modules.open_orders.rules import normalizar
+from app.shared.text import normalize_spaces as normalizar
 
 INPUTS = {
     "rqst_date": "DNUMRQSTDAT",

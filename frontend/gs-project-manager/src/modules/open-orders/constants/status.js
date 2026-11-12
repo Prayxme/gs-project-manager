@@ -16,8 +16,11 @@ export const CLOSED_STYLE = {
   CANCELLED: "bg-red-600 text-white",
 };
 
-// Fondo de fila: BURL a tiempo se resalta en azul (ventana de 5 días naturales).
+// Burlington (BURL y MODE) a tiempo se resalta en azul (ventana de 5 días naturales).
+const BURLINGTON = ["BURL", "MODE"];
 export const rowStyle = (o) =>
-  o.customer_code === "BURL" && o.status === "SAFE" ? "bg-sky-500/[0.07]" : STATUS_STYLE[o.status]?.row || "";
+  BURLINGTON.includes(o.customer_code) && o.status === "SAFE"
+    ? "bg-sky-500/[0.07]"
+    : STATUS_STYLE[o.status]?.row || "";
 
 export const AUTO_REFRESH_POLL_MS = 60_000; // la vista relee la base cada minuto

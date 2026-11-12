@@ -3,8 +3,8 @@ import threading
 from typing import Callable, Optional
 
 from app.core.dependencies import repository_dependency
-from app.modules.open_orders.portal_client import PortalClient
 from app.modules.open_orders.repository import OpenOrdersRepository
+from app.shared.wiesner.portal import PortalClient
 
 get_repository = repository_dependency(OpenOrdersRepository)
 

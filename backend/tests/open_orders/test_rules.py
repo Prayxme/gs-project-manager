@@ -27,6 +27,13 @@ def test_burl_cinco_dias_naturales():
     assert earliest == date(2026, 9, 23)           # ship - 21
 
 
+def test_mode_es_burlington_y_sigue_su_regla():
+    # Caso real: BURL120 del 2026-11-12 (Ship 11/11, Cancel 11/17) -> último día 11/12.
+    for code in ("BURL", "MODE"):
+        assert rules.routing_window(date(2026, 11, 11), date(2026, 11, 17), code) == (
+            date(2026, 11, 12), date(2026, 10, 21))
+
+
 def test_burl_nunca_antes_del_ship_date():
     deadline, _ = rules.routing_window(date(2026, 10, 18), date(2026, 10, 20), "BURL")
     assert deadline == date(2026, 10, 18)

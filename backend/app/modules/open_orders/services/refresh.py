@@ -7,9 +7,9 @@ from datetime import datetime
 from typing import Callable, Dict, List
 
 from app.modules.open_orders import rules
-from app.modules.open_orders.parser import PortalResponseError, parse_table
 from app.modules.open_orders.repository import OpenOrdersRepository
 from app.shared.dates import to_iso_utc, utc_now
+from app.shared.wiesner.portal import PortalResponseError, parse_table
 
 _lock = threading.Lock()  # una actualización a la vez (manual o automática)
 

@@ -1,7 +1,11 @@
-"""Cliente y ventana de routing (fecha límite y fecha más temprana) por cliente."""
+"""Clientes de Wiesner: código de cliente y ventana de routing (fecha límite y más temprana).
+Compartido por el Monitor de Órdenes Abiertas y el módulo de Routing."""
 import re
 from datetime import date, timedelta
 from typing import Optional, Tuple
+
+# MODE (Modecraft) es Burlington: comparte las reglas de BURL.
+BURLINGTON = ("BURL", "MODE")
 
 
 def customer_code(cust: str) -> str:
@@ -12,14 +16,14 @@ def customer_code(cust: str) -> str:
 
 def routing_window(ship: Optional[date], cancel: Optional[date], code: str) -> Tuple[Optional[date], Optional[date]]:
     """(deadline, earliest) según el cliente.
-    BURL: deadline = Cancel - 5 días naturales (nunca antes del Ship Date); earliest = Ship - 21.
+    BURL / MODE: deadline = Cancel - 5 días naturales (nunca antes del Ship Date); earliest = Ship - 21.
     ROSS/DDSD: deadline = Cancel; earliest = Ship - 21.
     MACY: deadline = Cancel; earliest = Ship - 7.
     Resto: deadline = Cancel; sin earliest."""
     if cancel is None:
         return None, None
     deadline, earliest = cancel, None
-    if code == "BURL" and ship:
+    if code in BURLINGTON and ship:
         menos5 = cancel - timedelta(days=5)
         deadline = ship if menos5 < ship else menos5
         earliest = ship - timedelta(days=21)

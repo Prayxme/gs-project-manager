@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 
 from app.modules.open_orders.config import ATTENTION_DAYS
 from app.modules.open_orders.rules.cfrm import cfrm_type
-from app.modules.open_orders.rules.window import customer_code, routing_window
 from app.shared.dates import parse_date
+from app.shared.wiesner import customer_code, routing_window
 
 STATUS_ORDER = ["OVERDUE", "LAST DAY", "ATTENTION", "SAFE", "TOO EARLY", "ROUTED"]
 

@@ -9,7 +9,7 @@ from typing import Optional
 
 import httpx
 
-from app.modules.open_orders import config
+from app.shared.wiesner.portal import config
 
 
 class PortalAuthError(Exception):
