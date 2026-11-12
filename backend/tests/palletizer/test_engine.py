@@ -2,9 +2,9 @@
 import pytest
 
 from app.modules.palletizer.schemas import Dimensions, OrderItem, PackingRequest, PalletConfig
-from app.modules.palletizer.services.layer_patterns import mejor_patron_2d, mejor_patron_caja
+from app.shared.packing.layer_patterns import mejor_patron_2d, mejor_patron_caja
 from app.modules.palletizer.services.packing_service import optimizar_orden_pallets
-from app.modules.palletizer.services.physics_engine import PlacedBox, soporte, validar_pallet
+from app.shared.packing.physics_engine import PlacedBox, soporte, validar_pallet
 
 W, D, H = 40.0, 48.0, 79.5
 

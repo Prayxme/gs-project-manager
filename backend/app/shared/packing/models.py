@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from app.modules.palletizer.services.physics_engine import PlacedBox
+from app.shared.packing.physics_engine import PlacedBox
 
 
 @dataclass(frozen=True)

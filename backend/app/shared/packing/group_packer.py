@@ -9,10 +9,10 @@ Empaque de un grupo (una PO de un DC). Estrategia:
 """
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.modules.palletizer.services.layer_patterns import Patron, mejor_patron_caja
-from app.modules.palletizer.services.models import Linea, Pallet
-from app.modules.palletizer.services.physics_engine import PlacedBox
-from app.modules.palletizer.services.placement import colocar_en_pallet, pallet_desde_patron
+from app.shared.packing.layer_patterns import Patron, mejor_patron_caja
+from app.shared.packing.models import Linea, Pallet
+from app.shared.packing.physics_engine import PlacedBox
+from app.shared.packing.placement import colocar_en_pallet, pallet_desde_patron
 
 
 def _linea_de_caja(b: PlacedBox) -> Linea:

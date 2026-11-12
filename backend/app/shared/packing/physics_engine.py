@@ -14,7 +14,7 @@ Reglas:
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.modules.palletizer.config import (
+from app.shared.packing.config import (
     EPSILON_SOLAPE,
     TOLERANCIA_ALTURA_SOPORTE,
     TOLERANCIA_DESBALANCE_COG,

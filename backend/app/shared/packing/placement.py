@@ -2,9 +2,9 @@
 from itertools import permutations
 from typing import List, Optional, Tuple
 
-from app.modules.palletizer.services.layer_patterns import Patron
-from app.modules.palletizer.services.models import Linea, Pallet
-from app.modules.palletizer.services.physics_engine import EPS, PlacedBox, altura_asiento, puede_colocar
+from app.shared.packing.layer_patterns import Patron
+from app.shared.packing.models import Linea, Pallet
+from app.shared.packing.physics_engine import EPS, PlacedBox, altura_asiento, puede_colocar
 
 
 def _orientaciones(l: float, w: float, h: float) -> Tuple[List[Tuple], List[Tuple]]:

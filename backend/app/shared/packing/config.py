@@ -1,4 +1,4 @@
-"""Constantes del módulo Paletizador."""
+"""Constantes del motor de empaque (compartido por Paletizador y Routing)."""
 
 # Tolerancias del Motor Físico (Pulgadas)
 EPSILON_SOLAPE: float = 0.01            # solape horizontal mínimo para considerar contacto

@@ -7,19 +7,14 @@ Reglas de negocio:
   * Lo más pesado va como base.
   * Cajas ordenadas en capas alineadas; límites del pallet siempre respetados.
 
-Piezas:
-  models.py        Linea / Pallet
-  layer_patterns   patrón de capas óptimo por tipo de caja
-  placement.py     mejor posición de una caja dentro de un pallet
-  group_packer.py  empaque de una PO (pallets completos + huecos + consolidación)
-  physics_engine   colisiones, soporte, validación y serialización
+El motor (patrones de capas, colocación, física) vive en app/shared/packing.
 """
 from typing import Any, Dict, List, Tuple
 
 from app.modules.palletizer.schemas import PackingRequest
-from app.modules.palletizer.services.group_packer import empacar_grupo
-from app.modules.palletizer.services.models import Linea
-from app.modules.palletizer.services.physics_engine import construir_pallet_dict, validar_pallet
+from app.shared.packing.group_packer import empacar_grupo
+from app.shared.packing.models import Linea
+from app.shared.packing.physics_engine import construir_pallet_dict, validar_pallet
 
 
 def _agrupar(request: PackingRequest) -> Dict[Tuple[str, str], List[Linea]]:
