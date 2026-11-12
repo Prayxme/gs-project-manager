@@ -70,11 +70,13 @@ src/
 ├── main.jsx                arranque: router + AppSettingsProvider
 ├── index.css               tokens de color (claro/oscuro) y utilidades (card, input, btn-*)
 ├── app/                    shell de la plataforma
-│   ├── App.jsx             rutas: inicio + una por módulo
-│   ├── modules.js          registro de módulos (id, ruta, icono, página perezosa)
-│   ├── i18n.js             textos del shell
-│   ├── components/         Layout, Navbar, LanguageSwitch, ThemeToggle, ModuleCard
-│   └── pages/              Home, NotFound
+│   ├── App.jsx             rutas generadas desde el registro (almacén -> cliente -> módulo)
+│   ├── registry/           modules.js (catálogo de herramientas) y warehouses.js (almacenes,
+│   │                       clientes y qué módulos tiene cada cliente; redirecciones de rutas viejas)
+│   ├── routing/            paths.js (construir/validar URLs), breadcrumbs.js, CanonicalPath (minúsculas)
+│   ├── i18n.js             textos del shell (almacenes, clientes, módulos)
+│   ├── components/         Layout, Navbar, Breadcrumbs, LanguageSwitch, ThemeToggle, NavCard, CardGridPage
+│   └── pages/              WarehousesPage (/), WarehousePage, ClientPage, ComingSoonPage, NotFound
 ├── shared/                 reutilizable por todos los módulos
 │   ├── api/                createApiClient(prefijo), jsonBody, fileBody, API_BASE_URL
 │   ├── settings/           AppSettingsProvider, useAppSettings, useTranslations
@@ -92,10 +94,34 @@ src/
     └── utils/              funciones puras del módulo
 ```
 
+### URLs: almacén / cliente / módulo
+
+```text
+/                                   almacenes
+/<almacén>                          clientes del almacén (o "Próximamente" si aún no tiene)
+/<almacén>/<cliente>                herramientas del cliente
+/<almacén>/<cliente>/<módulo>       la herramienta       p. ej. /bonnie/wiesner/order-intake
+```
+
+Las rutas salen SOLO de `app/registry/warehouses.js`: lo que no esté declarado muestra 404, y una
+URL con mayúsculas redirige a su forma en minúsculas. Las rutas anteriores (`/palletizer`, …)
+redirigen a `/bonnie/wiesner/...`.
+
+- **Habilitar un módulo existente para otro cliente:** añadir su id en `modules` del cliente.
+- **Nuevo cliente:** agregarlo en `clients` de su almacén + descripción en `app/i18n.js` (`clients.<id>`).
+- **Abrir un almacén:** `status: "active"` y al menos un cliente.
+
+> Hoy el backend de los módulos está configurado para Wiesner (hojas, portal, Gmail). Para usar un
+> módulo con otro cliente habrá que parametrizar esa configuración por cliente.
+>
+> En producción, el servidor web debe devolver `index.html` para cualquier ruta (SPA), para que
+> los enlaces directos como `/bonnie/wiesner/open-orders` funcionen.
+
 ### Agregar un módulo de frontend
 
 1. Crear `src/modules/<id>/<Nombre>Page.jsx` siguiendo la estructura anterior.
-2. Añadir la entrada en `src/app/modules.js` y sus textos en `src/app/i18n.js` (`modules.<id>`).
+2. Añadir la entrada en `src/app/registry/modules.js`, sus textos en `src/app/i18n.js` (`modules.<id>`)
+   y habilitarlo para los clientes que lo usen en `src/app/registry/warehouses.js`.
 3. Cliente HTTP: `const request = createApiClient("/<id>");`.
 4. Textos: `const t = useTranslations(I18N);` con `I18N = { es: {...}, en: {...} }`.
 
