@@ -15,7 +15,7 @@ from googleapiclient.discovery import build
 
 from app.modules.order_intake import config
 from app.shared.google import auth as google_auth
-from app.modules.order_intake.rules import col_idx
+from app.shared.spreadsheet import col_idx
 
 COLS_ESCRITURA = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "V"]
 

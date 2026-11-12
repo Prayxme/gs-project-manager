@@ -7,24 +7,28 @@ import logging
 import time
 from typing import Callable, Optional
 
-from app.modules.open_orders import config, service
-from app.modules.open_orders.store import Store
+from app.modules.open_orders import config, services
+from app.modules.open_orders.dependencies import fetch_portal_html, get_repository
+from app.modules.open_orders.repository import OpenOrdersRepository
 
 log = logging.getLogger("open_orders.scheduler")
 CHEQUEO_S = 20
 
 
-async def bucle_auto_refresh(get_store: Callable[[], Store], fetch_html: Callable[[], str]) -> None:
+async def bucle_auto_refresh(
+    get_repo: Callable[[], OpenOrdersRepository] = get_repository,
+    fetch_html: Callable[[], str] = fetch_portal_html,
+) -> None:
     ultimo_intento: Optional[float] = None
     ultimo_error = ""
     while True:
         try:
-            store = get_store()
-            if service.auto_refresh_activo(store):
+            repo = get_repo()
+            if services.auto_refresh_activo(repo):
                 ahora = time.monotonic()
                 if ultimo_intento is None or ahora - ultimo_intento >= config.AUTO_REFRESH_MINUTES * 60:
                     ultimo_intento = ahora
-                    await asyncio.to_thread(service.refresh, store, fetch_html, "auto")
+                    await asyncio.to_thread(services.refresh, repo, fetch_html, "auto")
             else:
                 ultimo_intento = None  # al reactivar, actualiza de inmediato
             ultimo_error = ""

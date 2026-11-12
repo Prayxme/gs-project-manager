@@ -3,7 +3,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from app.modules.order_intake import rules, service
+from app.modules.order_intake import rules
+from app.modules.order_intake import services as service
+from app.modules.order_intake.repository import IntakeLog
 
 
 def fila(pt, po="01347018", ctns=147, conts="HAMU4749408", g="No", h=46332, i=46339):
@@ -67,7 +69,7 @@ def inbound_ok(cont):
 @pytest.fixture
 def log():
     eng = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    return service.IntakeLog(eng, create_tables=True)
+    return IntakeLog(eng, create_tables=True)
 
 
 def test_clasifica_nuevo_registrado_y_revision():

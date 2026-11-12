@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from app.modules.open_orders import router as oo_router
-from app.modules.open_orders import service
+from app.modules.open_orders import dependencies as oo_deps
+from app.modules.open_orders import services as service
 from app.modules.open_orders.parser import PortalResponseError, parse_table
-from app.modules.open_orders.store import Store
+from app.modules.open_orders.repository import OpenOrdersRepository
 
 
 def fila(n, pt, po, cust, ship, cancel, cfrm="", appt="", notes="", ctns="10"):
@@ -31,7 +31,7 @@ def tabla(*filas):
 def store():
     # Pruebas sobre SQLite en memoria con el mismo código (SQLAlchemy); producción usa PostgreSQL.
     engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    return Store(engine, create_tables=True)
+    return OpenOrdersRepository(engine, create_tables=True)
 
 
 # --- lector -------------------------------------------------------------------------------
@@ -122,8 +122,8 @@ def test_importar_csv_columnas_incorrectas(store):
 def test_api(store):
     from app.main import app
     html = tabla(fila(1, "100", "PO-A", "MARS125", "11/01/26", "11/09/26"))
-    app.dependency_overrides[oo_router.get_store] = lambda: store
-    app.dependency_overrides[oo_router.get_fetcher] = lambda: (lambda: html)
+    app.dependency_overrides[oo_deps.get_repository] = lambda: store
+    app.dependency_overrides[oo_deps.get_fetcher] = lambda: (lambda: html)
     try:
         c = TestClient(app)
         assert c.post("/api/open-orders/refresh").json()["total"] == 1
@@ -146,8 +146,8 @@ def test_api_error_del_portal_es_502(store):
     def falla():
         raise PortalResponseError("sesión no válida")
 
-    app.dependency_overrides[oo_router.get_store] = lambda: store
-    app.dependency_overrides[oo_router.get_fetcher] = lambda: falla
+    app.dependency_overrides[oo_deps.get_repository] = lambda: store
+    app.dependency_overrides[oo_deps.get_fetcher] = lambda: falla
     try:
         r = TestClient(app).post("/api/open-orders/refresh")
         assert r.status_code == 502 and "sesión" in r.json()["detail"]

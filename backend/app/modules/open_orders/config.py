@@ -27,4 +27,3 @@ AUTO_REFRESH_MINUTES = 5
 
 # --- Reglas de negocio -----------------------------------------------------------------
 ATTENTION_DAYS = 3          # ATTENTION cuando faltan <= 3 días
-DEFAULT_TIMEZONE = "America/Los_Angeles"

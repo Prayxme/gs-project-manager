@@ -1,41 +1,16 @@
-"""Endpoints del módulo Ingreso de Órdenes (/api/order-intake/...)."""
-from typing import List, Optional
+"""Endpoints del módulo Ingreso de Órdenes (/api/order-intake/...). Solo capa HTTP."""
+from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from googleapiclient.errors import HttpError
 from pydantic import BaseModel, Field
 
-from app.core.database import DatabaseNotConfigured, get_engine
-from app.modules.order_intake import service
-from app.shared.google.auth import GoogleNotAuthorized
+from app.core.errors import http_errors
+from app.modules.order_intake import services
+from app.modules.order_intake.dependencies import GOOGLE_ERROR, get_gateway, get_log
+from app.modules.order_intake.repository import IntakeLog
 from app.modules.order_intake.sheets_client import SheetsGateway
 
 router = APIRouter(prefix="/api/order-intake", tags=["Ingreso de Órdenes"])
-_log: Optional[service.IntakeLog] = None
-
-
-def get_log() -> service.IntakeLog:
-    global _log
-    if _log is None:
-        try:
-            _log = service.IntakeLog(get_engine())
-        except DatabaseNotConfigured as e:
-            raise HTTPException(status_code=503, detail=str(e))
-    return _log
-
-
-def get_gateway() -> SheetsGateway:
-    try:
-        return SheetsGateway()
-    except GoogleNotAuthorized as e:
-        raise HTTPException(status_code=503, detail=str(e))
-
-
-def _google(fn, *args, **kwargs):
-    try:
-        return fn(*args, **kwargs)
-    except HttpError as e:
-        raise HTTPException(status_code=502, detail=f"Google Sheets respondió con error: {e.reason}")
 
 
 class IntakeOrder(BaseModel):
@@ -59,30 +34,31 @@ async def analyze(file: UploadFile = File(...), gw: SheetsGateway = Depends(get_
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe ser un PDF.")
     contenido = await file.read()
-    try:
-        r = _google(service.analizar_pdf, contenido, gw)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    with http_errors(GOOGLE_ERROR, (ValueError, 422, None)):
+        r = services.analizar_pdf(contenido, gw)
     return {**r, "file_name": file.filename}
 
 
 @router.post("/check")
 def check(body: ApplyRequest, gw: SheetsGateway = Depends(get_gateway)):
     """Vuelve a clasificar órdenes (p. ej. después de corregirlas en pantalla)."""
-    return _google(service.analizar_ordenes, [o.model_dump() for o in body.orders], gw)
+    with http_errors(GOOGLE_ERROR):
+        return services.analizar_ordenes([o.model_dump() for o in body.orders], gw)
 
 
 @router.post("/apply")
-def apply(body: ApplyRequest, gw: SheetsGateway = Depends(get_gateway), log: service.IntakeLog = Depends(get_log)):
+def apply(body: ApplyRequest, gw: SheetsGateway = Depends(get_gateway), log: IntakeLog = Depends(get_log)):
     ordenes = [o.model_dump() for o in body.orders]
-    return _google(service.aplicar, ordenes, gw, log, source="manual", source_ref=body.source_ref)
+    with http_errors(GOOGLE_ERROR):
+        return services.aplicar(ordenes, gw, log, source="manual", source_ref=body.source_ref)
 
 
 @router.get("/suggestions")
 def suggestions(gw: SheetsGateway = Depends(get_gateway)):
-    return {"suggestions": _google(service.sugerencias, gw)}
+    with http_errors(GOOGLE_ERROR):
+        return {"suggestions": services.sugerencias(gw)}
 
 
 @router.get("/log")
-def log(limit: int = 200, log: service.IntakeLog = Depends(get_log)):
+def log(limit: int = 200, log: IntakeLog = Depends(get_log)):
     return {"log": log.recientes(limit)}
