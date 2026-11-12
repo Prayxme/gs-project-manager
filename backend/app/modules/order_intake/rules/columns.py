@@ -28,6 +28,15 @@ def empresa(nombre_pdf: str) -> str:
     return " ".join(palabras)
 
 
+def cartones(orden: Dict) -> int:
+    """QTY CTNS: el TOTAL que declara el PDF; si no lo trae, la suma de las líneas.
+    (Comparado con lo registrado a mano, el TOTAL acierta cuando alguna línea no se pudo leer.)"""
+    declarado = orden.get("declared_cases")
+    if declarado is not None:
+        return int(declarado)
+    return sum(int(it.get("qty", 0)) for it in orden.get("items", []))
+
+
 def desde_pdf(orden: Dict) -> Dict:
     """Orden del lector de PDF -> orden de ingreso (lo que el usuario revisa y puede corregir)."""
     return {
@@ -38,7 +47,7 @@ def desde_pdf(orden: Dict) -> Dict:
         "containers": list(orden.get("containers", [])),
         "ship_date": orden.get("ship_date", ""),
         "cancel_date": orden.get("cancel_date", ""),
-        "ctns": sum(int(it.get("qty", 0)) for it in orden.get("items", [])),
+        "ctns": cartones(orden),
     }
 
 

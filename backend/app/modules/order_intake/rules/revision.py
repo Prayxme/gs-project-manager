@@ -18,7 +18,10 @@ CAMPOS_REVISION = {
 
 def _iguales(letra: str, antes, ahora) -> bool:
     if letra == "F":
-        return set(find_containers(antes)) == set(find_containers(ahora))
+        nuevos = set(find_containers(ahora))
+        # Si el PDF no muestra contenedores (p. ej. no se pudieron leer sus líneas) no es un cambio:
+        # nunca se borra de la hoja un dato que el PDF simplemente no trae.
+        return not nuevos or set(find_containers(antes)) == nuevos
     if letra in ("H", "I"):
         return parse_date(antes) == ahora
     if letra == "V":

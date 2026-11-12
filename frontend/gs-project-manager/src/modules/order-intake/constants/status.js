@@ -6,3 +6,14 @@ export const STATUS_STYLE = {
 };
 
 export const STATUS_ORDER = ["NEW", "REVISION", "REGISTERED"];
+
+// Estado de cada PDF en la bandeja de Gmail.
+export const INBOX_STYLE = {
+  PENDING: "bg-amber-400 text-slate-900",
+  NO_CHANGES: "bg-surface-3 text-muted",
+  APPLIED: "bg-brand text-on-brand",
+  DISMISSED: "bg-surface-3 text-muted line-through",
+  ERROR: "bg-red-600 text-white",
+};
+
+export const INBOX_REFRESH_MS = 120_000; // la vista relee la bandeja cada 2 minutos

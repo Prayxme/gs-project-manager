@@ -54,6 +54,14 @@ def test_valores_de_fila_nueva():
 
 
 # --- columna G -----------------------------------------------------------------
+def test_cartones_usa_el_total_declarado_y_si_no_la_suma():
+    assert rules.desde_pdf({**ORDEN, "declared_cases": 147})["ctns"] == 147
+    # Alguna línea no se pudo leer: manda el TOTAL del PDF (así lo registra la persona a mano).
+    assert rules.desde_pdf({**ORDEN, "items": [{"qty": 210}], "declared_cases": 426})["ctns"] == 426
+    assert rules.desde_pdf({**ORDEN, "items": [], "declared_cases": 150})["ctns"] == 150
+    assert rules.desde_pdf({**ORDEN, "items": [{"qty": 100}, {"qty": 47}]})["ctns"] == 147  # sin TOTAL
+
+
 def test_recibido_si_todos_returned_y_yes_aunque_T_sea_no():
     ib = inbound(("HAMU4749408", "Returned", "YES"), ("CSNU8090823", "Returned", "YES"))
     assert rules.recibido(ORDEN["containers"], ib) == ("Yes", [])
@@ -94,6 +102,11 @@ def test_detecta_revision_de_cartones_po_fechas_y_contenedores():
     assert [d["col"] for d in difs] == ["D", "F", "H", "I", "V"]
     v = next(d for d in difs if d["col"] == "V")
     assert (v["antes"], v["ahora"]) == ("140", "147")
+
+
+def test_pdf_sin_contenedores_no_borra_los_de_la_hoja():
+    sin_lineas = {**ORDEN, "containers": [], "items": [], "declared_cases": 147}
+    assert rules.comparar(sin_lineas, fila_hoja()) == []
 
 
 def test_cambios_en_columnas_manuales_no_cuentan():

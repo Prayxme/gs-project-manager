@@ -29,7 +29,7 @@ app/
 │   └── registry.py         carga automática de app/modules/<id>/module.py
 ├── shared/                 utilidades reutilizables (sin dependencias de módulos)
 │   ├── dates.py  text.py  containers.py  spreadsheet.py  db.py
-│   ├── google/             credenciales OAuth (auth.py, config.py)
+│   ├── google/             credenciales OAuth (auth.py, config.py) y lectura de Gmail (gmail.py)
 │   └── pick_ticket/        lector del PDF de Pick Tickets (patterns, item_line, page, parser, schemas)
 └── modules/<id>/
     ├── module.py           ModuleSpec(id, router, background_tasks) -> registro automático
@@ -48,7 +48,7 @@ Módulos actuales:
 |---|---|---|
 | `palletizer` | `/api/palletizer` | `services/`: `models`, `layer_patterns`, `placement`, `group_packer`, `physics_engine`, `packing_service` (entrada) |
 | `open_orders` | `/api/open-orders` | `rules/` (window, cfrm, status, changes), `services/` (refresh, views, history_import), `portal_client`, `parser`, `scheduler` |
-| `order_intake` | `/api/order-intake` | `rules/` (columns, received, revision), `services/` (analysis, writer), `sheets_client` |
+| `order_intake` | `/api/order-intake` | `rules/` (columns, received, revision, inbox), `services/` (analysis, writer, gmail_sync, inbox), `sheets_client`, `inbox_repository`, `inbox_router`, `scheduler` (revisión de Gmail) |
 
 ### Agregar un módulo de backend
 
@@ -98,6 +98,12 @@ src/
 2. Añadir la entrada en `src/app/modules.js` y sus textos en `src/app/i18n.js` (`modules.<id>`).
 3. Cliente HTTP: `const request = createApiClient("/<id>");`.
 4. Textos: `const t = useTranslations(I18N);` con `I18N = { es: {...}, en: {...} }`.
+
+### Tareas de fondo
+
+Un módulo declara tareas en `ModuleSpec(background_tasks=[...])` (p. ej. el refresco del portal o la
+revisión de Gmail). Arrancan con el servidor; `GS_DISABLE_BACKGROUND_TASKS=1` las apaga, y las
+pruebas lo activan en `tests/conftest.py` para no tocar servicios reales.
 
 ## Verificación
 

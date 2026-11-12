@@ -4,7 +4,7 @@ import StatusBadge from "./StatusBadge";
 
 // Botón de subida + archivos cargados y conteo por estado.
 export default function UploadPanel({ review, busy, t }) {
-  const { rows, files, subir, conteo } = review;
+  const { rows, files, subir, conteo, origen } = review;
   return (
     <div className="card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
       <FileButton accept=".pdf" multiple onFiles={subir} disabled={!!busy} className="btn-primary w-full sm:w-auto">
@@ -15,6 +15,9 @@ export default function UploadPanel({ review, busy, t }) {
           <span className="font-bold text-muted animate-pulse">{busy}</span>
         ) : rows.length > 0 ? (
           <>
+            {origen && (
+              <p className="text-xs font-extrabold uppercase tracking-wide text-brand">📬 {t.inbox.fromGmail} · {origen.subject}</p>
+            )}
             <p className="font-bold text-ink truncate">{files.join(", ")}</p>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {STATUS_ORDER.map((st) => (

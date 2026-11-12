@@ -2,76 +2,15 @@
 import re
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
+from intake_fakes import FakeGateway, fila, inbound_ok, motor_sqlite, orden
 
-from app.modules.order_intake import rules
 from app.modules.order_intake import services as service
 from app.modules.order_intake.repository import IntakeLog
 
 
-def fila(pt, po="01347018", ctns=147, conts="HAMU4749408", g="No", h=46332, i=46339):
-    f = [""] * 22
-    for col, v in {"A": False, "B": "WIESNER", "C": "MARS125", "D": po, "E": pt, "F": conts,
-                   "G": g, "H": h, "I": i, "V": ctns}.items():
-        f[rules.col_idx(col)] = v
-    return f
-
-
-class FakeGateway:
-    """Imita SheetsGateway: hoja BONNIE desde la fila 4, INBOUND y LIST."""
-
-    def __init__(self, filas, inbound=(), tiendas=("MARS125",)):
-        self.filas = dict(filas)            # {num_fila: valores}
-        self.inbound = list(inbound)
-        self.tiendas = set(tiendas)
-        self.escrituras = []
-
-    def leer_bonnie(self):
-        indice = {str(v[4]): (n, v) for n, v in self.filas.items()}
-        return max(self.filas, default=3), indice
-
-    def leer_inbound(self):
-        return self.inbound
-
-    def leer_tiendas(self):
-        return self.tiendas
-
-    def agregar_filas(self, ultima, filas):
-        nums = list(range(ultima + 1, ultima + 1 + len(filas)))
-        for n, f in zip(nums, filas):
-            v = [""] * 22
-            for col, val in f.items():
-                v[rules.col_idx(col)] = val
-            self.filas[n] = v
-            self.escrituras.append(("NEW", n, f))
-        return nums
-
-    def actualizar_celdas(self, n, cambios):
-        for col, val in cambios.items():
-            self.filas[n][rules.col_idx(col)] = val
-        self.escrituras.append(("UPDATE", n, cambios))
-
-
-def orden(pt, **c):
-    o = {"piktik": str(pt), "company": "WIESNER", "store": "MARS125", "po": "01347018",
-         "containers": ["HAMU4749408"], "ship_date": "11/06/2026", "cancel_date": "11/13/2026", "ctns": 147}
-    o.update(c)
-    return o
-
-
-def inbound_ok(cont):
-    f = [""] * 25
-    f[1], f[3] = cont, "Returned"
-    for letra in "PQRSUVWX":
-        f[rules.col_idx(letra)] = "YES"
-    return f
-
-
 @pytest.fixture
 def log():
-    eng = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
-    return IntakeLog(eng, create_tables=True)
+    return IntakeLog(motor_sqlite(), create_tables=True)
 
 
 def test_clasifica_nuevo_registrado_y_revision():

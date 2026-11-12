@@ -2,6 +2,7 @@
 Análisis (solo lectura): lee el PDF, consulta las hojas BONNIE e INBOUND y clasifica cada PikTik
 como NEW (nuevo), REGISTERED (ya registrado, sin cambios) o REVISION (cambió algo).
 """
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from app.modules.order_intake import rules
@@ -40,19 +41,37 @@ def _clasificar(orden: Dict, indice: Dict, inbound: Dict[str, bool], tiendas: se
     }
 
 
-def analizar_pdf(contenido: bytes, gateway: SheetsGateway) -> Dict:
+@dataclass(frozen=True)
+class ContextoHoja:
+    """Lo que se lee de Google una sola vez para clasificar muchas órdenes."""
+    indice: Dict
+    inbound: Dict[str, bool]
+    tiendas: set
+
+
+def leer_contexto(gateway: SheetsGateway) -> ContextoHoja:
+    _, indice = gateway.leer_bonnie()
+    return ContextoHoja(indice, rules.indice_inbound(gateway.leer_inbound()), gateway.leer_tiendas())
+
+
+def clasificar_ordenes(ordenes: List[Dict], ctx: ContextoHoja, avisos_pdf: Optional[List[str]] = None) -> Dict:
+    resultado = [_clasificar(o, ctx.indice, ctx.inbound, ctx.tiendas) for o in ordenes]
+    resumen = {e: sum(1 for r in resultado if r["status"] == e) for e in ESTADOS}
+    return {"orders": resultado, "summary": resumen, "pdf_warnings": avisos_pdf or []}
+
+
+def clasificar_pdf(contenido: bytes, ctx: ContextoHoja) -> Dict:
     parsed = extraer_datos_pick_ticket(contenido)
     ordenes = [rules.desde_pdf(o) for o in parsed["orders"]]
-    return analizar_ordenes(ordenes, gateway, parsed.get("warnings", []))
+    return clasificar_ordenes(ordenes, ctx, parsed.get("warnings", []))
+
+
+def analizar_pdf(contenido: bytes, gateway: SheetsGateway) -> Dict:
+    return clasificar_pdf(contenido, leer_contexto(gateway))
 
 
 def analizar_ordenes(ordenes: List[Dict], gateway: SheetsGateway, avisos_pdf: Optional[List[str]] = None) -> Dict:
-    _, indice = gateway.leer_bonnie()
-    inbound = rules.indice_inbound(gateway.leer_inbound())
-    tiendas = gateway.leer_tiendas()
-    resultado = [_clasificar(o, indice, inbound, tiendas) for o in ordenes]
-    resumen = {e: sum(1 for r in resultado if r["status"] == e) for e in ESTADOS}
-    return {"orders": resultado, "summary": resumen, "pdf_warnings": avisos_pdf or []}
+    return clasificar_ordenes(ordenes, leer_contexto(gateway), avisos_pdf)
 
 
 def sugerencias(gateway: SheetsGateway) -> List[Dict]:
