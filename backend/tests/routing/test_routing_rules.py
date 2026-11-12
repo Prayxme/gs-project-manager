@@ -25,7 +25,8 @@ def test_peso_incluye_45_lb_por_pallet():
 def test_limites_y_familia():
     assert rules.limite_pallets("ROSS") == rules.limite_pallets("DDSD") == 26
     assert rules.limite_pallets("BURL") == rules.limite_pallets("MARS") == 28
-    assert rules.familia("MODE") == rules.familia("BURL") == "BURL"
+    assert rules.limite_pallets("MODE") == 28
+    assert rules.familia("MODE") != rules.familia("BURL")   # portales distintos
     assert rules.familia("ROSS") == "ROSS"
 
 
@@ -75,7 +76,9 @@ def _grupo(po, cust="BURL", key="92408 570 E MILL ST", cancel="2026-11-17"):
 
 
 def test_clave_de_grupo():
-    assert rules.clave_grupo(_grupo("1")) == rules.clave_grupo(_grupo("2", cust="MODE"))
+    assert rules.clave_grupo(_grupo("1")) == rules.clave_grupo(_grupo("2"))
+    # BURL y MODE van al mismo DC 512 pero se enrutan en portales distintos.
+    assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", cust="MODE"))
     assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", cancel="2026-11-24"))
     assert rules.clave_grupo(_grupo("1")) != rules.clave_grupo(_grupo("2", key="92572 3404 INDIAN AVE"))
     # MARS / TJMA / NEWT: el prefijo de la PO separa DCs aunque la dirección coincida.

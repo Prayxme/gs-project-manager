@@ -2,12 +2,12 @@
 import math
 
 from app.modules.routing import config
-from app.shared.wiesner import BURLINGTON
 
 
 def familia(codigo: str) -> str:
-    """Clientes que se enrutan como uno solo: BURL y MODE son Burlington."""
-    return "BURL" if codigo in BURLINGTON else codigo
+    """Con quién puede compartir RTS una PO: solo con su mismo cliente.
+    BURL y MODE son ambos Burlington, pero se enrutan en portales distintos: van separados."""
+    return codigo
 
 
 def cft_declarado(codigo: str, pallets: int) -> int:
