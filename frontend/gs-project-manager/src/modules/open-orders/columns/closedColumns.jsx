@@ -6,7 +6,12 @@ import { limpiarFecha, mdyOrdenable } from "../utils/dates";
 export const closedColumns = (t) => [
   {
     key: "final_status", label: t.cols.finalStatus, mobile: "title",
-    render: (c) => <Badge className={CLOSED_STYLE[c.final_status] || ""}>{c.final_status}</Badge>,
+    render: (c) => (
+      <span title={c.original_status ? `${t.originally}: ${c.original_status} · ${c.original_reason || ""}` : undefined}>
+        <Badge className={CLOSED_STYLE[c.final_status] || ""}>{c.final_status}</Badge>
+        {c.original_status && <span className="ml-1 text-[11px] text-muted">*</span>}
+      </span>
+    ),
   },
   { key: "pick_ticket", label: t.cols.pickTicket, mobile: "title", render: (c) => <span className="font-mono font-bold">PT {c.pick_ticket}</span> },
   { key: "date_removed", label: t.cols.dateRemoved },

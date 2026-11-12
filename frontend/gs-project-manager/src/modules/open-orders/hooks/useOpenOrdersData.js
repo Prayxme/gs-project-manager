@@ -85,7 +85,7 @@ export function useOpenOrdersData(tab, t) {
   const importarCsv = async (file) => {
     try {
       const r = await importCompletedCsv(file);
-      setAviso(fmt(t.importDone, { i: r.inserted, d: r.duplicates, x: r.invalid }));
+      setAviso(fmt(t.importDone, { i: r.inserted, d: r.duplicates, x: r.invalid, r: r.reclassified ?? 0 }));
       await cargarTab("closed");
       await cargarActivas();
     } catch (e) {

@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Dict, List, Optional
 
 from app.modules.open_orders.repository import OpenOrdersRepository
+from app.modules.open_orders.rules.cfrm import reclasificar_importada
 from app.shared.text import normalize_spaces
 
 COLUMNAS_CSV = {
@@ -28,7 +29,7 @@ def importar_completadas_csv(repo: OpenOrdersRepository, contenido: str) -> Dict
         raise ValueError(f"El CSV no tiene las columnas esperadas: {', '.join(faltan)}")
     existentes = repo.closed_pick_tickets()
     filas: List[Dict] = []
-    duplicadas = invalidas = 0
+    duplicadas = invalidas = reclasificadas = 0
     for fila in lector:
         d = {dest: normalize_spaces(fila.get(orig, "")) for orig, dest in COLUMNAS_CSV.items()}
         fecha = _fecha_csv(d["date_removed"])
@@ -39,6 +40,13 @@ def importar_completadas_csv(repo: OpenOrdersRepository, contenido: str) -> Dict
             duplicadas += 1
             continue
         existentes.add(d["pick_ticket"])
-        filas.append({**d, "date_removed": fecha, "removed_at": None, "source": "import"})
+        fila = {**d, "date_removed": fecha, "removed_at": None, "source": "import",
+                "original_status": None, "original_reason": None}
+        correccion = reclasificar_importada(fila)
+        if correccion:
+            fila.update(correccion)
+            reclasificadas += 1
+        filas.append(fila)
     repo.insert_closed(filas)
-    return {"inserted": len(filas), "duplicates": duplicadas, "invalid": invalidas}
+    return {"inserted": len(filas), "duplicates": duplicadas, "invalid": invalidas,
+            "reclassified": reclasificadas}

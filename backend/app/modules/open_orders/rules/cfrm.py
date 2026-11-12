@@ -1,7 +1,7 @@
 """Tipo de número de confirmación (Cfrm Number) y clasificación de órdenes que salen del portal.
 Formatos confirmados por el usuario con datos reales del portal."""
 import re
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from app.shared.text import normalize_spaces
 
@@ -41,3 +41,16 @@ def clasificar_salida(order: Dict) -> Tuple[str, str]:
     if tipo:
         return "REMOVED", "REMOVED BEFORE APPOINTMENT"
     return "CANCELLED", "CANCELLED BEFORE ROUTING"
+
+
+def reclasificar_importada(fila: Dict) -> Optional[Dict]:
+    """Corrección del histórico del Google Sheet: el Apps Script marcaba REMOVED órdenes que sí
+    tenían carga asignada (LOAD ID, CITI, FedEx). Si la regla del monitor dice COMPLETED, devuelve
+    los cambios conservando el estado y motivo originales; si no, None."""
+    if fila.get("final_status") != "REMOVED":
+        return None
+    estado, motivo = clasificar_salida(fila)
+    if estado != "COMPLETED":
+        return None
+    return {"final_status": estado, "reason": motivo,
+            "original_status": fila["final_status"], "original_reason": fila.get("reason")}

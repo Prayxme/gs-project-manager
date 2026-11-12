@@ -102,15 +102,28 @@ CSV = (
     "9/30/2026,CANCELLED,CANCELLED BEFORE ROUTING,6843472,580650703,BURL120,10/14/26,10/20/26,,00/00/00,\n"
     "9/30/2026,CANCELLED,CANCELLED BEFORE ROUTING,6843472,580650703,BURL120,10/14/26,10/20/26,,00/00/00,\n"
     "fecha mala,COMPLETED,SHIPPED,1,1,X,,,,,\n"
+    "10/1/2026,REMOVED,REMOVED BEFORE APPOINTMENT,6844001,111,ROSS125,,,LOAD ID # 99887,,\n"
+    "10/1/2026,REMOVED,REMOVED BEFORE APPOINTMENT,6844165,222,ROSS125,,,RTS 2402037,,\n"
 )
 
 
 def test_importar_csv(store):
     r = service.importar_completadas_csv(store, CSV)
-    assert r == {"inserted": 2, "duplicates": 1, "invalid": 1}
+    assert r == {"inserted": 4, "duplicates": 1, "invalid": 1, "reclassified": 1}
     assert service.importar_completadas_csv(store, CSV)["inserted"] == 0  # idempotente
     c = {x["pick_ticket"]: x for x in store.closed()}
     assert c["6841553"]["cfrm_number"] == "Load ID 10624682" and c["6841553"]["date_removed"] == "2026-09-29"
+    assert c["6841553"]["original_status"] is None
+
+
+def test_importar_csv_reclasifica_removed_con_carga(store):
+    service.importar_completadas_csv(store, CSV)
+    c = {x["pick_ticket"]: x for x in store.closed()}
+    # LOAD ID = carga asignada: se envió aunque el Sheet dijera REMOVED; el original queda guardado
+    assert (c["6844001"]["final_status"], c["6844001"]["reason"]) == ("COMPLETED", "SHIPPED")
+    assert (c["6844001"]["original_status"], c["6844001"]["original_reason"]) == ("REMOVED", "REMOVED BEFORE APPOINTMENT")
+    # RTS = solo routing solicitado: sigue REMOVED
+    assert c["6844165"]["final_status"] == "REMOVED" and c["6844165"]["original_status"] is None
 
 
 def test_importar_csv_columnas_incorrectas(store):
@@ -133,8 +146,8 @@ def test_api(store):
         s = c.get("/api/open-orders/summary", params={"today": "2026-11-09", "tz": "America/Los_Angeles"}).json()
         assert s["auto_refresh"] is True and s["by_status"]["LAST DAY"] == 1
         r = c.post("/api/open-orders/import-completed", files={"file": ("h.csv", CSV.encode(), "text/csv")})
-        assert r.json()["inserted"] == 2
-        assert len(c.get("/api/open-orders/closed").json()["closed"]) == 2
+        assert r.json()["inserted"] == 4 and r.json()["reclassified"] == 1
+        assert len(c.get("/api/open-orders/closed").json()["closed"]) == 4
         assert c.get("/api/open-orders/orders", params={"today": "mal"}).status_code == 422
     finally:
         app.dependency_overrides.clear()
