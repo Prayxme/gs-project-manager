@@ -10,12 +10,8 @@ export default function Box({ item, color, isDarkMode, offsetX, offsetZ }) {
   return (
     <mesh position={[centerX, centerY, centerZ]}>
       <boxGeometry args={[width_in, height_in, length_in]} />
-      <meshStandardMaterial color={color || "#0284C7"} transparent opacity={0.88} />
-      <Edges
-        color={isDarkMode ? "#ffffff" : "#0F172A"}
-        transparent
-        opacity={isDarkMode ? 0.35 : 0.65}
-      />
+      <meshStandardMaterial color={color || "#4C956C"} transparent opacity={0.9} />
+      <Edges color={isDarkMode ? "#E8ECEB" : "#06141B"} transparent opacity={isDarkMode ? 0.35 : 0.55} />
     </mesh>
   );
 }

@@ -1,7 +1,7 @@
 export const STATUS_STYLE = {
-  NEW: "bg-emerald-600 text-white",
+  NEW: "bg-brand text-on-brand",
   REVISION: "bg-amber-400 text-slate-900",
-  REGISTERED: "bg-slate-300 text-slate-700",
+  REGISTERED: "bg-surface-3 text-muted",
 };
 
 export const I18N = {

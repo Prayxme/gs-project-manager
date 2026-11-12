@@ -14,10 +14,12 @@ import Viewport3D from './components/3d/Viewport3D';
 
 export default function PalletizerPage() {
   // Idioma y tema vienen del shell (compartidos por todos los módulos).
-  const { lang, isDarkMode, theme } = useAppSettings();
+  const { lang, isDarkMode } = useAppSettings();
   const t = I18N[lang];
 
   const [loading, setLoading] = useState(false);
+  // En celular: 'data' (formulario) o '3d' (visor y resultados).
+  const [vista, setVista] = useState("data");
   const fileInputRef = useRef(null);
 
   // Estados de PDF
@@ -134,6 +136,7 @@ export default function PalletizerPage() {
       if (data && data.pallets && data.pallets.length > 0) {
         setGruposPallets(agruparPallets(data.pallets));
         setGrupoSeleccionadoIdx(0);
+        setVista("3d");
         if (data.unplaced_boxes > 0) {
           alert(
             lang === "es"
@@ -169,76 +172,84 @@ export default function PalletizerPage() {
     [palletData]
   );
 
+  const pestana = (id, texto) => (
+    <button
+      onClick={() => setVista(id)}
+      className={`flex-1 py-2 rounded-lg text-sm font-extrabold transition ${
+        vista === id ? "bg-brand text-on-brand shadow-sm" : "text-muted hover:text-ink"
+      }`}
+    >
+      {texto}
+    </button>
+  );
+
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
       {/* Input oculto para carga de PDF */}
       <input type="file" accept=".pdf" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
 
-      {/* Modal de Revisión PDF */}
       <PdfReviewModal
         show={showPdfModal}
         data={pdfParsedData}
         setData={setPdfParsedData}
         onClose={() => setShowPdfModal(false)}
         onConfirm={aplicarDatosPDF}
-        isDarkMode={isDarkMode}
         t={t}
-        theme={theme}
       />
 
-        {/* Sidebar de Configuración */}
-        <Sidebar
-          orderInfo={orderInfo}
-          setOrderInfo={setOrderInfo}
-          itemsForm={itemsForm}
-          actualizarItem={actualizarItem}
-          eliminarItem={eliminarItem}
-          agregarItem={agregarItem}
-          skuColorMap={skuColorMap}
-          calcularArmado={calcularArmado}
-          loading={loading}
-          pdfLoading={pdfLoading}
-          triggerPdfUpload={() => fileInputRef.current.click()}
+      {/* Selector de vista (solo celular) */}
+      <div className="md:hidden flex gap-1 p-1 m-2 mb-0 rounded-xl bg-surface border border-line shrink-0">
+        {pestana("data", t.tabCargo)}
+        {pestana("3d", `${t.tab3d}${totalPalletsGenerados ? ` · ${totalPalletsGenerados}` : ""}`)}
+      </div>
+
+      <Sidebar
+        className={vista === "data" ? "flex flex-1 md:flex-none" : "hidden md:flex"}
+        orderInfo={orderInfo}
+        setOrderInfo={setOrderInfo}
+        itemsForm={itemsForm}
+        actualizarItem={actualizarItem}
+        eliminarItem={eliminarItem}
+        agregarItem={agregarItem}
+        skuColorMap={skuColorMap}
+        calcularArmado={calcularArmado}
+        loading={loading}
+        pdfLoading={pdfLoading}
+        triggerPdfUpload={() => fileInputRef.current.click()}
+        t={t}
+      />
+
+      {/* Visor 3D + resultados */}
+      <div className={`${vista === "3d" ? "flex" : "hidden md:flex"} flex-1 flex-col relative min-h-0 overflow-y-auto md:overflow-hidden`}>
+        <Viewport3D
+          palletData={palletData}
           isDarkMode={isDarkMode}
           t={t}
-          theme={theme}
+          grupoSeleccionadoIdx={grupoSeleccionadoIdx}
+          skuColorMap={skuColorMap}
+          offsets={offsets}
         />
 
-        {/* 3. Visor 3D y HUD */}
-        <div className="flex-1 flex flex-col relative">
-          <Viewport3D
-            palletData={palletData}
-            isDarkMode={isDarkMode}
-            t={t}
-            grupoSeleccionadoIdx={grupoSeleccionadoIdx}
-            skuColorMap={skuColorMap}
-            offsets={offsets}
-            theme={theme}
-          />
-
-          {/* HUD Flotante a la Derecha */}
-          <div className="absolute top-4 right-6 z-20 flex flex-col items-end gap-2.5 pointer-events-auto w-80">
+        {/* Paneles: flotantes a la derecha en escritorio, debajo del visor en celular */}
+        {gruposPallets.length > 0 && (
+          <div className="p-3 md:p-0 md:absolute md:top-4 md:right-4 z-20 flex flex-col gap-2.5 md:w-80 md:max-h-[calc(100%-2rem)] md:overflow-y-auto">
             <LayoutSelector
               gruposPallets={gruposPallets}
               grupoSeleccionadoIdx={grupoSeleccionadoIdx}
               setGrupoSeleccionadoIdx={setGrupoSeleccionadoIdx}
-              isDarkMode={isDarkMode}
               t={t}
-              theme={theme}
             />
-
             <TrailerCard
               totalPalletsGenerados={totalPalletsGenerados}
               numRTs={numRTs}
               totalCubeFeet={totalCubeFeet}
               totalGrossWeight={totalGrossWeight}
               maxCft={LOGISTICS_DEFAULTS.MAX_CFT_POR_RT}
-              isDarkMode={isDarkMode}
               t={t}
-              theme={theme}
             />
           </div>
-        </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -26,7 +26,14 @@ export function AppSettingsProvider({ children }) {
   const [isDarkMode, setIsDarkMode] = useState(() => leer("gs.dark", false));
 
   useEffect(() => guardar("gs.lang", lang), [lang]);
-  useEffect(() => guardar("gs.dark", isDarkMode), [isDarkMode]);
+  useEffect(() => {
+    guardar("gs.dark", isDarkMode);
+    // Los tokens de color de index.css cambian con esta clase.
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [isDarkMode]);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const value = useMemo(
     () => ({ lang, setLang, isDarkMode, setIsDarkMode, theme: buildTheme(isDarkMode) }),

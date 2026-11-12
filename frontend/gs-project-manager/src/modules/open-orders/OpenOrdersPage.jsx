@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "../../app/AppSettings";
-import CaliforniaClock from "./components/CaliforniaClock";
 import DataTable from "../../shared/components/DataTable";
+import { Alert, Badge, PageHeader, Tabs } from "../../shared/components/ui";
+import CaliforniaClock from "./components/CaliforniaClock";
 import KpiBar from "./components/KpiBar";
 import { AUTO_REFRESH_POLL_MS, CLOSED_STYLE, I18N, STATUS_STYLE, fmt } from "./constants";
 import {
@@ -15,7 +16,7 @@ const mdyOrdenable = (mdy) => (mdy && mdy !== "00/00/00" ? `${mdy.slice(6)}${mdy
 const limpiarFecha = (mdy) => (mdy === "00/00/00" ? "" : mdy);
 
 export default function OpenOrdersPage() {
-  const { lang, theme, isDarkMode } = useAppSettings();
+  const { lang } = useAppSettings();
   const t = I18N[lang];
 
   const [tab, setTab] = useState("active");
@@ -129,18 +130,20 @@ export default function OpenOrdersPage() {
     });
   }, [orders, q, statusFilter, cliente, soloPendientes]);
 
-  const badge = (cls, txt) => (
-    <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-extrabold ${cls}`}>{txt}</span>
-  );
-
   const columnasActivas = [
     {
-      key: "priority_rank", label: t.cols.status,
-      render: (o) => badge(STATUS_STYLE[o.status]?.badge || "", o.status || "—"),
+      key: "priority_rank", label: t.cols.status, mobile: "title",
+      render: (o) => <Badge className={STATUS_STYLE[o.status]?.badge || ""}>{o.status || "—"}</Badge>,
     },
     {
-      key: "days_remaining", label: t.cols.days,
-      render: (o) => (o.status === "ROUTED" ? "✔" : <span className="font-mono font-bold">{o.days_remaining}</span>),
+      key: "days_remaining", label: t.cols.days, mobile: "title",
+      render: (o) =>
+        o.status === "ROUTED" ? <span className="text-brand font-bold">✔</span>
+        : <span className="font-mono font-bold">{o.days_remaining} d</span>,
+    },
+    {
+      key: "pick_ticket", label: t.cols.pickTicket, mobile: "title",
+      render: (o) => <span className="font-mono font-bold">PT {o.pick_ticket}</span>,
     },
     {
       key: "routing_deadline", label: t.cols.deadline,
@@ -150,7 +153,6 @@ export default function OpenOrdersPage() {
         </span>
       ),
     },
-    { key: "pick_ticket", label: t.cols.pickTicket, render: (o) => <span className="font-mono">{o.pick_ticket}</span> },
     { key: "po", label: t.cols.po, render: (o) => <span className="font-mono font-bold">{o.po}</span> },
     { key: "cust", label: t.cols.customer },
     { key: "ship_date", label: t.cols.shipDate, sortValue: (o) => mdyOrdenable(o.ship_date) },
@@ -161,7 +163,7 @@ export default function OpenOrdersPage() {
         o.cfrm_number ? (
           <span>
             <span className="font-mono">{o.cfrm_number}</span>
-            <span className={`ml-1.5 text-[11px] ${theme.textMuted}`}>({t.cfrmType[o.cfrm_type] || ""})</span>
+            <span className="ml-1.5 text-[11px] text-muted">({t.cfrmType[o.cfrm_type] || ""})</span>
           </span>
         ) : "",
     },
@@ -177,15 +179,15 @@ export default function OpenOrdersPage() {
         o.last_change ? (
           <span>
             <span className="font-bold">{o.last_change}</span>
-            <span className={`block text-[11px] ${theme.textMuted}`}>{utcALocal(o.last_change_at)}</span>
+            <span className="block text-[11px] text-muted">{utcALocal(o.last_change_at)}</span>
           </span>
         ) : "",
     },
   ];
 
   const columnasEventos = [
+    { key: "event", label: t.cols.event, mobile: "title", render: (e) => <span className="font-bold">{e.event}</span> },
     { key: "ts", label: t.cols.when, render: (e) => utcALocal(e.ts) },
-    { key: "event", label: t.cols.event, render: (e) => <span className="font-bold">{e.event}</span> },
     { key: "pick_ticket", label: t.cols.pickTicket, render: (e) => <span className="font-mono">{e.pick_ticket}</span> },
     { key: "po", label: t.cols.po, render: (e) => <span className="font-mono">{e.po}</span> },
     { key: "cust", label: t.cols.customer },
@@ -194,10 +196,13 @@ export default function OpenOrdersPage() {
   ];
 
   const columnasCerradas = [
+    {
+      key: "final_status", label: t.cols.finalStatus, mobile: "title",
+      render: (c) => <Badge className={CLOSED_STYLE[c.final_status] || ""}>{c.final_status}</Badge>,
+    },
+    { key: "pick_ticket", label: t.cols.pickTicket, mobile: "title", render: (c) => <span className="font-mono font-bold">PT {c.pick_ticket}</span> },
     { key: "date_removed", label: t.cols.dateRemoved },
-    { key: "final_status", label: t.cols.finalStatus, render: (c) => badge(CLOSED_STYLE[c.final_status] || "", c.final_status) },
     { key: "reason", label: t.cols.reason },
-    { key: "pick_ticket", label: t.cols.pickTicket, render: (c) => <span className="font-mono">{c.pick_ticket}</span> },
     { key: "po", label: t.cols.po, render: (c) => <span className="font-mono font-bold">{c.po}</span> },
     { key: "cust", label: t.cols.customer },
     { key: "ship_date", label: t.cols.shipDate, sortValue: (c) => mdyOrdenable(c.ship_date) },
@@ -205,143 +210,96 @@ export default function OpenOrdersPage() {
     { key: "cfrm_number", label: t.cols.cfrm, render: (c) => <span className="font-mono">{c.cfrm_number}</span> },
     { key: "appt_date", label: t.cols.appt, render: (c) => limpiarFecha(c.appt_date) },
     { key: "notes", label: t.cols.notes, className: "min-w-[10rem]" },
-    { key: "source", label: t.cols.source },
+    { key: "source", label: t.cols.source, mobile: "hidden" },
   ];
 
-  const boton = `text-sm font-bold px-3.5 py-2 rounded-lg border transition ${
-    isDarkMode ? "border-slate-700 hover:bg-slate-800" : "border-slate-300 bg-white hover:bg-slate-50 shadow-sm"
-  }`;
   const ultima = summary?.last_success_at;
   const ultimaFallo = summary?.last_run && !summary.last_run.ok ? summary.last_run.error : "";
+  const hayFiltros = q || cliente || soloPendientes || statusFilter.length > 0;
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-[1800px] mx-auto px-5 py-5 space-y-4">
-        {/* Encabezado */}
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className={`text-2xl font-black tracking-tight ${theme.textTitle}`}>{t.title}</h2>
-            <p className={`text-sm ${theme.textMuted}`}>
-              {t.lastUpdate}: <span className="font-bold">{ultima ? utcALocal(ultima) : t.never}</span>
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <CaliforniaClock label={t.caTime} theme={theme} />
-            <label className={`flex items-center gap-2 text-sm font-bold cursor-pointer ${theme.textTitle}`}>
-              <input
-                type="checkbox"
-                className="w-4 h-4 accent-[#0284C7]"
-                checked={!!summary?.auto_refresh}
-                onChange={alternarAuto}
-              />
-              {fmt(t.auto, { n: summary?.auto_refresh_minutes ?? 5 })}
-            </label>
-            <button
-              onClick={actualizarAhora}
-              disabled={refrescando}
-              className="text-sm font-extrabold px-4 py-2 rounded-lg bg-[#0284C7] text-white hover:bg-[#0369A1] disabled:opacity-60 shadow-md"
-            >
-              {refrescando ? t.updating : `🔄 ${t.updateNow}`}
-            </button>
-          </div>
-        </div>
+      <div className="max-w-[1800px] mx-auto px-3 sm:px-5 py-4 sm:py-5 space-y-4">
+        <PageHeader
+          title={t.title}
+          subtitle={`${t.lastUpdate}: ${ultima ? utcALocal(ultima) : t.never}`}
+        >
+          <CaliforniaClock label={t.caTime} />
+          <label className="flex items-center gap-2 text-sm font-bold text-ink cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-[var(--brand)]"
+              checked={!!summary?.auto_refresh}
+              onChange={alternarAuto}
+            />
+            {fmt(t.auto, { n: summary?.auto_refresh_minutes ?? 5 })}
+          </label>
+          <button onClick={actualizarAhora} disabled={refrescando} className="btn-primary">
+            {refrescando ? t.updating : `🔄 ${t.updateNow}`}
+          </button>
+        </PageHeader>
 
-        {(error || ultimaFallo) && (
-          <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-600 flex justify-between gap-3">
-            <span>{t.errorPrefix}: {error || ultimaFallo}</span>
-            {error && <button onClick={() => setError("")} className="font-bold">✕</button>}
-          </div>
-        )}
-        {aviso && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 flex justify-between">
-            <span>{aviso}</span>
-            <button onClick={() => setAviso("")} className="font-bold">✕</button>
-          </div>
-        )}
+        <Alert onClose={error ? () => setError("") : undefined}>
+          {(error || ultimaFallo) && `${t.errorPrefix}: ${error || ultimaFallo}`}
+        </Alert>
+        <Alert kind="success" onClose={() => setAviso("")}>{aviso}</Alert>
 
-        <KpiBar
-          summary={summary}
-          t={t}
-          theme={theme}
-          isDarkMode={isDarkMode}
-          statusFilter={statusFilter}
-          onToggleStatus={alternarEstado}
+        <KpiBar summary={summary} t={t} statusFilter={statusFilter} onToggleStatus={alternarEstado} />
+
+        <Tabs
+          active={tab}
+          onChange={setTab}
+          tabs={[["active", t.tabs.active, orders.length], ["events", t.tabs.events], ["closed", t.tabs.closed]]}
         />
-
-        {/* Pestañas */}
-        <div className={`flex gap-1 border-b ${isDarkMode ? "border-[#1E2235]" : "border-slate-200"}`}>
-          {Object.entries(t.tabs).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`px-4 py-2 text-sm font-extrabold border-b-2 -mb-px transition ${
-                tab === id ? `border-[#0284C7] ${theme.textSubtitle}` : `border-transparent ${theme.textMuted}`
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
         {tab === "active" && (
           <>
-            <div className="flex flex-wrap items-center gap-3">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t.search}
-                className={`flex-1 min-w-[16rem] text-sm px-3 py-2 rounded-lg border outline-none ${theme.inputBg}`}
-              />
-              <select
-                value={cliente}
-                onChange={(e) => setCliente(e.target.value)}
-                className={`text-sm px-3 py-2 rounded-lg border ${theme.inputBg}`}
-              >
-                <option value="">{t.allCustomers}</option>
-                {clientes.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <label className={`flex items-center gap-2 text-sm font-bold ${theme.textTitle}`}>
-                <input type="checkbox" className="w-4 h-4 accent-[#0284C7]" checked={soloPendientes}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.search} className="input sm:flex-1 sm:min-w-[16rem]" />
+              <div className="flex gap-2">
+                <select value={cliente} onChange={(e) => setCliente(e.target.value)} className="input w-auto flex-1 sm:flex-none">
+                  <option value="">{t.allCustomers}</option>
+                  {clientes.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {hayFiltros && (
+                  <button
+                    className="btn-secondary"
+                    onClick={() => { setQ(""); setCliente(""); setSoloPendientes(false); setStatusFilter([]); }}
+                  >
+                    {t.clearFilters}
+                  </button>
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-sm font-bold text-ink select-none">
+                <input type="checkbox" className="w-4 h-4 accent-[var(--brand)]" checked={soloPendientes}
                   onChange={(e) => setSoloPendientes(e.target.checked)} />
                 {t.pendingOnly}
               </label>
-              {(q || cliente || soloPendientes || statusFilter.length > 0) && (
-                <button className={boton} onClick={() => { setQ(""); setCliente(""); setSoloPendientes(false); setStatusFilter([]); }}>
-                  {t.clearFilters}
-                </button>
-              )}
-              <span className={`text-sm ${theme.textMuted}`}>
-                {fmt(t.showing, { n: filtradas.length, t: orders.length })}
-              </span>
+              <span className="text-sm text-muted sm:ml-auto">{fmt(t.showing, { n: filtradas.length, t: orders.length })}</span>
             </div>
-            {orders.length === 0 ? (
-              <p className={`text-sm py-10 text-center ${theme.textMuted}`}>{t.noData}</p>
-            ) : (
-              <DataTable
-                columns={columnasActivas}
-                rows={filtradas}
-                rowKey={(o) => o.pick_ticket}
-                rowClassName={(o) =>
-                  o.customer_code === "BURL" && o.status === "SAFE" ? "bg-sky-500/10" : STATUS_STYLE[o.status]?.row || ""
-                }
-                theme={theme}
-                isDarkMode={isDarkMode}
-              />
-            )}
+            <DataTable
+              columns={columnasActivas}
+              rows={filtradas}
+              rowKey={(o) => o.pick_ticket}
+              rowClassName={(o) =>
+                o.customer_code === "BURL" && o.status === "SAFE" ? "bg-sky-500/[0.07]" : STATUS_STYLE[o.status]?.row || ""
+              }
+              emptyText={t.noData}
+            />
           </>
         )}
 
         {tab === "events" && (
-          <DataTable columns={columnasEventos} rows={events} rowKey={(e) => e.id} theme={theme} isDarkMode={isDarkMode} />
+          <DataTable columns={columnasEventos} rows={events} rowKey={(e) => e.id} emptyText="—" />
         )}
 
         {tab === "closed" && (
           <>
             <div className="flex justify-end">
               <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={importarCsv} />
-              <button className={boton} onClick={() => csvRef.current?.click()}>📥 {t.importCsv}</button>
+              <button className="btn-secondary" onClick={() => csvRef.current?.click()}>📥 {t.importCsv}</button>
             </div>
-            <DataTable columns={columnasCerradas} rows={closed} rowKey={(c) => c.pick_ticket} theme={theme} isDarkMode={isDarkMode} />
+            <DataTable columns={columnasCerradas} rows={closed} rowKey={(c) => c.pick_ticket} emptyText="—" />
           </>
         )}
       </div>

@@ -1,25 +1,26 @@
 import { useRef, useState } from "react";
 import { useAppSettings } from "../../app/AppSettings";
 import DataTable from "../../shared/components/DataTable";
+import { Alert, Badge, PageHeader, Tabs } from "../../shared/components/ui";
 import { I18N, STATUS_STYLE, fmt } from "./constants";
 import {
   aOrden, analyzePdf, applyOrders, checkOrders, getLog, getSuggestions,
 } from "./services/orderIntakeApi";
 
 const EDITABLES = [
-  { key: "company", w: "w-36" },
-  { key: "store", w: "w-24" },
-  { key: "po", w: "w-28" },
-  { key: "containers", w: "w-56" },
-  { key: "ship_date", w: "w-28", col: "ship" },
-  { key: "cancel_date", w: "w-28", col: "cancel" },
-  { key: "ctns", w: "w-20", type: "number" },
+  { key: "company", col: "company", w: "md:w-36" },
+  { key: "store", col: "store", w: "md:w-24" },
+  { key: "po", col: "po", w: "md:w-28" },
+  { key: "containers", col: "containers", w: "md:w-56" },
+  { key: "ship_date", col: "ship", w: "md:w-28" },
+  { key: "cancel_date", col: "cancel", w: "md:w-28" },
+  { key: "ctns", col: "ctns", w: "md:w-20", type: "number" },
 ];
 
 const seleccionInicial = (orders) => new Set(orders.filter((o) => o.status !== "REGISTERED").map((o) => o.piktik));
 
 export default function OrderIntakePage() {
-  const { lang, theme, isDarkMode } = useAppSettings();
+  const { lang } = useAppSettings();
   const t = I18N[lang];
 
   const [tab, setTab] = useState("review");
@@ -34,11 +35,6 @@ export default function OrderIntakePage() {
   const [suggestions, setSuggestions] = useState(null);
   const [log, setLog] = useState(null);
   const inputRef = useRef(null);
-
-  const borde = isDarkMode ? "border-[#1E2235]" : "border-slate-200";
-  const boton = `text-sm font-bold px-3.5 py-2 rounded-lg border transition disabled:opacity-50 ${
-    isDarkMode ? "border-slate-700 hover:bg-slate-800" : "border-slate-300 bg-white hover:bg-slate-50 shadow-sm"
-  }`;
 
   const subir = async (ev) => {
     const lista = Array.from(ev.target.files || []);
@@ -152,148 +148,157 @@ export default function OrderIntakePage() {
     });
 
   const conteo = (st) => rows.filter((r) => r.status === st).length;
-  const badge = (st) => (
-    <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-extrabold whitespace-nowrap ${STATUS_STYLE[st]}`}>
-      {t.status[st]}
-    </span>
+  const badge = (st) => <Badge className={STATUS_STYLE[st]}>{t.status[st]}</Badge>;
+
+  const campo = (r, e, extra = "") => (
+    <input
+      type={e.type || "text"}
+      inputMode={e.type === "number" ? "numeric" : undefined}
+      value={e.key === "containers" ? r.containers.join(" ") : r[e.key]}
+      onChange={(ev) => editar(r.piktik, e.key, ev.target.value)}
+      className={`input font-mono py-1.5 ${extra}`}
+    />
+  );
+
+  const notas = (r) => (
+    <>
+      {r.diffs.map((d) => (
+        <p key={d.col} className="font-bold text-amber-700 dark:text-amber-300">
+          {d.campo}: {d.antes || "—"} → {d.ahora}
+        </p>
+      ))}
+      {r.warnings.map((w, i) => <p key={i} className="text-muted">⚠ {w}</p>)}
+    </>
+  );
+
+  const casilla = (r) => (
+    <input
+      type="checkbox"
+      className="w-5 h-5 md:w-4 md:h-4 accent-[var(--brand)]"
+      disabled={r.status === "REGISTERED"}
+      checked={selected.has(r.piktik)}
+      onChange={() => alternar(r.piktik)}
+      aria-label={`PikTik ${r.piktik}`}
+    />
   );
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-[1800px] mx-auto px-5 py-5 space-y-4">
-        <div>
-          <h2 className={`text-2xl font-black tracking-tight ${theme.textTitle}`}>{t.title}</h2>
-          <p className={`text-sm max-w-3xl ${theme.textMuted}`}>{t.subtitle}</p>
-        </div>
+      <div className="max-w-[1800px] mx-auto px-3 sm:px-5 py-4 sm:py-5 space-y-4 pb-28 md:pb-5">
+        <PageHeader title={t.title} subtitle={t.subtitle} />
 
-        {error && (
-          <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-600 flex justify-between gap-3">
-            <span>{error}</span>
-            <button onClick={() => setError("")} className="font-bold">✕</button>
-          </div>
-        )}
-        {notice && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 flex justify-between">
-            <span>{notice}</span>
-            <button onClick={() => setNotice("")} className="font-bold">✕</button>
-          </div>
-        )}
+        <Alert onClose={() => setError("")}>{error}</Alert>
+        <Alert kind="success" onClose={() => setNotice("")}>{notice}</Alert>
 
-        <div className={`flex gap-1 border-b ${borde}`}>
-          {Object.entries(t.tabs).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => abrirTab(id)}
-              className={`px-4 py-2 text-sm font-extrabold border-b-2 -mb-px transition ${
-                tab === id ? `border-[#0284C7] ${theme.textSubtitle}` : `border-transparent ${theme.textMuted}`
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          active={tab}
+          onChange={abrirTab}
+          tabs={[["review", t.tabs.review], ["suggestions", t.tabs.suggestions], ["log", t.tabs.log]]}
+        />
 
         {tab === "review" && (
           <>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <input ref={inputRef} type="file" accept=".pdf" multiple className="hidden" onChange={subir} />
-              <button
-                onClick={() => inputRef.current?.click()}
-                disabled={!!busy}
-                className="text-sm font-extrabold px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 shadow-md"
-              >
+              <button onClick={() => inputRef.current?.click()} disabled={!!busy} className="btn-primary w-full sm:w-auto">
                 {t.upload}
               </button>
-              {busy && <span className={`text-sm font-bold ${theme.textMuted}`}>{busy}</span>}
-              {rows.length > 0 && (
-                <span className={`text-sm ${theme.textMuted}`}>
-                  {files.join(", ")} · {fmt(t.summary, { n: conteo("NEW"), r: conteo("REVISION"), g: conteo("REGISTERED") })}
-                </span>
-              )}
+              <div className="text-sm min-w-0">
+                {busy ? (
+                  <span className="font-bold text-muted animate-pulse">{busy}</span>
+                ) : rows.length > 0 ? (
+                  <>
+                    <p className="font-bold text-ink truncate">{files.join(", ")}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      <Badge className={STATUS_STYLE.NEW}>{conteo("NEW")} {t.status.NEW}</Badge>
+                      <Badge className={STATUS_STYLE.REVISION}>{conteo("REVISION")} {t.status.REVISION}</Badge>
+                      <Badge className={STATUS_STYLE.REGISTERED}>{conteo("REGISTERED")} {t.status.REGISTERED}</Badge>
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-muted">{t.empty}</span>
+                )}
+              </div>
             </div>
 
             {pdfWarnings.length > 0 && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700">
+              <Alert kind="warning">
                 <p className="font-extrabold">{t.pdfWarn}</p>
                 {pdfWarnings.map((w, i) => <p key={i}>• {w}</p>)}
-              </div>
+              </Alert>
             )}
 
-            {rows.length === 0 ? (
-              <p className={`text-sm py-10 text-center ${theme.textMuted}`}>{t.empty}</p>
-            ) : (
+            {rows.length > 0 && (
               <>
-                <div className={`overflow-auto rounded-xl border ${borde}`}>
+                {/* Escritorio: tabla editable */}
+                <div className="hidden md:block overflow-auto rounded-xl border border-line bg-surface shadow-card max-h-[65vh]">
                   <table className="w-full text-sm">
-                    <thead className={isDarkMode ? "bg-[#171A29] text-slate-300" : "bg-slate-100 text-slate-600"}>
+                    <thead className="sticky top-0 z-10 bg-surface-2 text-muted">
                       <tr>
-                        {["sel", "status", "piktik", ...EDITABLES.map((e) => e.col || e.key), "received", "changes"].map((c) => (
-                          <th key={c} className="px-2 py-2 text-left text-xs font-extrabold uppercase whitespace-nowrap">
-                            {t.cols[c] ?? t.cols[c === "ship_date" ? "ship" : c]}
+                        {["sel", "status", "piktik", ...EDITABLES.map((e) => e.col), "received", "changes"].map((c) => (
+                          <th key={c} className="px-2 py-2.5 text-left text-xs font-extrabold uppercase whitespace-nowrap border-b border-line">
+                            {t.cols[c]}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((r) => {
-                        const bloqueada = r.status === "REGISTERED";
-                        return (
-                          <tr key={r.piktik} className={`border-t ${borde} ${bloqueada ? "opacity-60" : ""}`}>
-                            <td className="px-2 py-1.5">
-                              <input
-                                type="checkbox"
-                                className="w-4 h-4 accent-[#0284C7]"
-                                disabled={bloqueada}
-                                checked={selected.has(r.piktik)}
-                                onChange={() => alternar(r.piktik)}
-                              />
-                            </td>
-                            <td className="px-2 py-1.5">{badge(r.status)}</td>
-                            <td className={`px-2 py-1.5 font-mono font-bold ${theme.textTitle}`}>
-                              {r.piktik}
-                              {r.sheet_row && <span className={`block text-[11px] font-normal ${theme.textMuted}`}>{t.cols.row} {r.sheet_row}</span>}
-                            </td>
-                            {EDITABLES.map((e) => (
-                              <td key={e.key} className="px-1 py-1">
-                                <input
-                                  type={e.type || "text"}
-                                  value={e.key === "containers" ? r.containers.join(" ") : r[e.key]}
-                                  onChange={(ev) => editar(r.piktik, e.key, ev.target.value)}
-                                  className={`${e.w} text-sm font-mono px-2 py-1 rounded border ${theme.inputBg}`}
-                                />
-                              </td>
-                            ))}
-                            <td className={`px-2 py-1.5 font-bold ${r.received === "Yes" ? "text-emerald-600" : theme.textTitle}`}>
-                              {r.received}
-                            </td>
-                            <td className={`px-2 py-1.5 text-xs min-w-[14rem] ${theme.textTitle}`}>
-                              {r.diffs.map((d) => (
-                                <p key={d.col} className="font-bold text-amber-600">
-                                  {d.campo}: {d.antes || "—"} → {d.ahora}
-                                </p>
-                              ))}
-                              {r.warnings.map((w, i) => (
-                                <p key={i} className={theme.textMuted}>⚠ {w}</p>
-                              ))}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {rows.map((r) => (
+                        <tr key={r.piktik} className={`border-t border-line ${r.status === "REGISTERED" ? "opacity-60" : ""}`}>
+                          <td className="px-2 py-1.5">{casilla(r)}</td>
+                          <td className="px-2 py-1.5">{badge(r.status)}</td>
+                          <td className="px-2 py-1.5 font-mono font-bold text-ink">
+                            {r.piktik}
+                            {r.sheet_row && <span className="block text-[11px] font-normal text-muted">{t.cols.row} {r.sheet_row}</span>}
+                          </td>
+                          {EDITABLES.map((e) => (
+                            <td key={e.key} className="px-1 py-1">{campo(r, e, e.w)}</td>
+                          ))}
+                          <td className={`px-2 py-1.5 font-bold ${r.received === "Yes" ? "text-brand" : "text-ink"}`}>{r.received}</td>
+                          <td className="px-2 py-1.5 text-xs min-w-[14rem]">{notas(r)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Celular: una tarjeta por PikTik */}
+                <div className="md:hidden space-y-3">
+                  {rows.map((r) => (
+                    <div key={r.piktik} className={`card p-3.5 space-y-3 ${r.status === "REGISTERED" ? "opacity-70" : ""}`}>
+                      <div className="flex items-center gap-2.5">
+                        {casilla(r)}
+                        <span className="font-mono font-black text-ink">PT {r.piktik}</span>
+                        {badge(r.status)}
+                        <span className={`ml-auto text-sm font-bold ${r.received === "Yes" ? "text-brand" : "text-muted"}`}>
+                          {t.cols.received}: {r.received}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {EDITABLES.map((e) => (
+                          <label key={e.key} className={e.key === "containers" || e.key === "company" ? "col-span-2" : ""}>
+                            <span className="label">{t.cols[e.col]}</span>
+                            {campo(r, e)}
+                          </label>
+                        ))}
+                      </div>
+                      {(r.diffs.length > 0 || r.warnings.length > 0) && <div className="text-xs space-y-0.5">{notas(r)}</div>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Acciones (fijas abajo en celular) */}
+                <div className="fixed md:static bottom-0 inset-x-0 z-20 bg-surface/95 md:bg-transparent backdrop-blur border-t md:border-0 border-line p-3 md:p-0 flex flex-wrap items-center gap-2 md:gap-3">
                   {dirty && (
                     <>
-                      <span className="text-sm font-bold text-amber-600">{t.edited}</span>
-                      <button className={boton} disabled={!!busy} onClick={verificar}>{t.recheck}</button>
+                      <span className="text-sm font-bold text-amber-700 dark:text-amber-300 w-full md:w-auto">{t.edited}</span>
+                      <button className="btn-secondary flex-1 md:flex-none" disabled={!!busy} onClick={verificar}>{t.recheck}</button>
                     </>
                   )}
                   <button
                     onClick={escribir}
                     disabled={!!busy || dirty || aEscribir.length === 0}
-                    className="text-sm font-extrabold px-4 py-2 rounded-lg bg-[#0284C7] text-white hover:bg-[#0369A1] disabled:opacity-50 shadow-md"
+                    className="btn-primary flex-1 md:flex-none"
                   >
                     {fmt(t.write, { n: aEscribir.length })}
                   </button>
@@ -305,45 +310,43 @@ export default function OrderIntakePage() {
 
         {tab === "suggestions" && (
           <div className="space-y-3">
-            <p className={`text-sm max-w-3xl ${theme.textMuted}`}>{t.sugIntro}</p>
-            <button className={boton} disabled={!!busy} onClick={cargarSugerencias}>{busy || t.sugLoad}</button>
-            {suggestions && (suggestions.length === 0 ? (
-              <p className={`text-sm ${theme.textMuted}`}>{t.sugNone}</p>
-            ) : (
+            <p className="text-sm max-w-3xl text-muted">{t.sugIntro}</p>
+            <button className="btn-secondary" disabled={!!busy} onClick={cargarSugerencias}>{busy || t.sugLoad}</button>
+            {suggestions && (
               <DataTable
                 columns={[
+                  { key: "piktik", label: t.cols.piktik, mobile: "title", render: (s) => <span className="font-mono font-bold">PT {s.piktik}</span> },
                   { key: "row", label: t.cols.row },
-                  { key: "piktik", label: t.cols.piktik, render: (s) => <span className="font-mono font-bold">{s.piktik}</span> },
                   { key: "containers", label: t.cols.containers, render: (s) => s.containers.join(" ") },
                 ]}
                 rows={suggestions}
                 rowKey={(s) => s.row}
-                theme={theme}
-                isDarkMode={isDarkMode}
+                emptyText={t.sugNone}
               />
-            ))}
+            )}
           </div>
         )}
 
-        {tab === "log" && (log && log.length ? (
-          <DataTable
-            columns={[
-              { key: "ts", label: t.cols.when, render: (l) => new Date(l.ts).toLocaleString() },
-              { key: "action", label: t.cols.action, render: (l) => badge(l.action) },
-              { key: "piktik", label: t.cols.piktik, render: (l) => <span className="font-mono">{l.piktik}</span> },
-              { key: "po", label: t.cols.po },
-              { key: "store", label: t.cols.store },
-              { key: "sheet_row", label: t.cols.row },
-              { key: "source_ref", label: t.cols.source, className: "min-w-[12rem]" },
-            ]}
-            rows={log}
-            rowKey={(l) => l.id}
-            theme={theme}
-            isDarkMode={isDarkMode}
-          />
-        ) : (
-          <p className={`text-sm py-10 text-center ${theme.textMuted}`}>{log === null ? t.reading : t.noLog}</p>
-        ))}
+        {tab === "log" && (
+          log === null ? (
+            <p className="text-sm py-10 text-center text-muted">{t.reading}</p>
+          ) : (
+            <DataTable
+              columns={[
+                { key: "action", label: t.cols.action, mobile: "title", render: (l) => badge(l.action) },
+                { key: "piktik", label: t.cols.piktik, mobile: "title", render: (l) => <span className="font-mono font-bold">PT {l.piktik}</span> },
+                { key: "ts", label: t.cols.when, render: (l) => new Date(l.ts).toLocaleString() },
+                { key: "po", label: t.cols.po },
+                { key: "store", label: t.cols.store },
+                { key: "sheet_row", label: t.cols.row },
+                { key: "source_ref", label: t.cols.source, className: "min-w-[12rem]" },
+              ]}
+              rows={log}
+              rowKey={(l) => l.id}
+              emptyText={t.noLog}
+            />
+          )
+        )}
       </div>
     </div>
   );

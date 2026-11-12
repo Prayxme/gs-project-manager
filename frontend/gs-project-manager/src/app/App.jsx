@@ -7,9 +7,8 @@ import { APP_I18N } from "./i18n";
 import { MODULES } from "./modules";
 
 function Layout() {
-  const { theme } = useAppSettings();
   return (
-    <div className={`flex flex-col h-screen w-full font-['Plus_Jakarta_Sans',sans-serif] overflow-hidden ${theme.bgApp} transition-colors duration-200`}>
+    <div className="flex flex-col h-dvh w-full overflow-hidden bg-canvas text-ink transition-colors duration-200">
       <Navbar />
       <main className="flex-1 overflow-hidden">
         <Suspense fallback={null}>
@@ -21,12 +20,12 @@ function Layout() {
 }
 
 function NotFound() {
-  const { lang, theme } = useAppSettings();
+  const { lang } = useAppSettings();
   const t = APP_I18N[lang];
   return (
     <div className="h-full flex flex-col items-center justify-center gap-3">
-      <p className={theme.textMuted}>{t.notFound}</p>
-      <Link to="/" className={`font-bold ${theme.textSubtitle}`}>{t.backHome}</Link>
+      <p className="text-muted">{t.notFound}</p>
+      <Link to="/" className="font-bold text-brand">{t.backHome}</Link>
     </div>
   );
 }

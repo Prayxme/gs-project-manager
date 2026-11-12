@@ -45,7 +45,9 @@ export const I18N = {
     modalBoxes: "boxes",
     modalPages: "pages",
     modalWarnings: "Parser warnings",
-    destinationDc: "DC"
+    destinationDc: "DC",
+    tabCargo: "Cargo",
+    tab3d: "3D view"
   },
   es: {
     palletStandard: "Pallet Estándar US (48\" x 40\")",
@@ -93,6 +95,8 @@ export const I18N = {
     modalBoxes: "cajas",
     modalPages: "páginas",
     modalWarnings: "Advertencias del lector",
-    destinationDc: "DC"
+    destinationDc: "DC",
+    tabCargo: "Carga",
+    tab3d: "Vista 3D"
   }
 };

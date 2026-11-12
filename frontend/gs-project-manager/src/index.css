@@ -1,9 +1,126 @@
 @import "tailwindcss";
 
-body { 
-  background-color: #0b0b0d; 
-  color: #E3E3E3; 
-  overflow: hidden; 
+/* El modo oscuro se activa con la clase .dark en <html> (la controla AppSettings). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Sistema de diseño — Golden State Project Manager
+   Paleta: azul pizarra (estructura / modo oscuro) + verde (marca / acciones).
+     Pizarra: #06141B #11212D #253745 #4A5C6A #9BA8AB #CCD0CF
+     Verde:   #0F3D2E #166534 #4C956C #A8D5BA #E6F2EA #F9FCF8
+   Usar SIEMPRE estos tokens (bg-surface, text-ink, bg-brand…) en lugar de colores sueltos.
+   --------------------------------------------------------------------------- */
+:root {
+  --canvas: #f3f7f4;          /* fondo de la app */
+  --surface: #ffffff;         /* tarjetas, paneles */
+  --surface-2: #f9fcf8;       /* encabezados de tabla, zonas secundarias */
+  --surface-3: #e6f2ea;       /* hover, fondos suaves */
+  --line: #d9e2dd;            /* bordes */
+  --line-strong: #9ba8ab;
+  --ink: #06141b;             /* texto principal */
+  --ink-2: #253745;           /* texto secundario fuerte */
+  --muted: #4a5c6a;           /* texto atenuado */
+  --brand: #166534;           /* acción principal */
+  --brand-hover: #0f3d2e;
+  --brand-soft: #e6f2ea;
+  --brand-ink: #0f3d2e;       /* texto sobre fondo suave de marca */
+  --accent: #4c956c;
+  --on-brand: #ffffff;
+  --header: #0f3d2e;          /* barra superior */
+  --on-header: #f9fcf8;
+  --on-header-muted: #a8d5ba;
+  --viewport: #e6ecea;        /* fondo del visor 3D */
+  --shadow: 0 1px 2px rgb(6 20 27 / 0.06), 0 4px 16px rgb(6 20 27 / 0.06);
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #06141b;
+  --surface: #11212d;
+  --surface-2: #0b1a23;
+  --surface-3: #253745;
+  --line: #253745;
+  --line-strong: #4a5c6a;
+  --ink: #e8eceb;
+  --ink-2: #ccd0cf;
+  --muted: #9ba8ab;
+  --brand: #4c956c;
+  --brand-hover: #a8d5ba;
+  --brand-soft: #12302a;
+  --brand-ink: #a8d5ba;
+  --accent: #a8d5ba;
+  --on-brand: #06141b;
+  --header: #0b1a23;
+  --on-header: #e8eceb;
+  --on-header-muted: #9ba8ab;
+  --viewport: #081720;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-accent: var(--accent);
+  --color-on-brand: var(--on-brand);
+  --color-header: var(--header);
+  --color-on-header: var(--on-header);
+  --color-on-header-muted: var(--on-header-muted);
+  --color-viewport: var(--viewport);
+  --shadow-card: var(--shadow);
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
   margin: 0;
-  padding: 0;
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Barras de desplazamiento discretas acordes a la paleta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Componentes reutilizables (Tailwind 4: @utility permite combinarlos con variantes y @apply) */
+@utility card {
+  @apply rounded-2xl border border-line bg-surface shadow-card;
+}
+@utility input {
+  @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition
+    placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-bold transition
+    disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-brand text-on-brand shadow-sm hover:bg-brand-hover;
+}
+@utility btn-secondary {
+  @apply btn border border-line bg-surface text-ink hover:bg-surface-3;
+}
+@utility label {
+  @apply mb-1 block text-xs font-bold uppercase tracking-wide text-muted;
 }
