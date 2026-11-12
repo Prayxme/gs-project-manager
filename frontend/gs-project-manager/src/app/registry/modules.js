@@ -25,6 +25,13 @@ export const MODULES = [
     status: "active",
     component: lazy(() => import("../../modules/order-intake/OrderIntakePage")),
   },
+  {
+    id: "routing",
+    slug: "routing",
+    icon: "🚚",
+    status: "active",
+    component: lazy(() => import("../../modules/routing/RoutingPage")),
+  },
 ];
 
 export const MODULE_BY_ID = Object.fromEntries(MODULES.map((m) => [m.id, m]));

@@ -27,7 +27,7 @@ export const APP_I18N = {
       vernon: "Vernon warehouse.",
     },
     clients: {
-      wiesner: "Wiesner Products: palletizing, open orders and order intake.",
+      wiesner: "Wiesner Products: palletizing, open orders, order intake and routing.",
     },
     modules: {
       palletizer: {
@@ -41,6 +41,10 @@ export const APP_I18N = {
       "order-intake": {
         name: "Order Intake",
         description: "Read Pick Ticket PDFs and register new orders and revisions in the control sheet.",
+      },
+      routing: {
+        name: "Routing (RTS)",
+        description: "Estimate pallets per PO, reconcile with the Wiesner portal and group POs into RTS by destination.",
       },
     },
   },
@@ -71,7 +75,7 @@ export const APP_I18N = {
       vernon: "Almacén Vernon.",
     },
     clients: {
-      wiesner: "Wiesner Products: paletizado, órdenes abiertas e ingreso de órdenes.",
+      wiesner: "Wiesner Products: paletizado, órdenes abiertas, ingreso de órdenes y routing.",
     },
     modules: {
       palletizer: {
@@ -85,6 +89,10 @@ export const APP_I18N = {
       "order-intake": {
         name: "Ingreso de Órdenes",
         description: "Lee los PDF de Pick Tickets y registra órdenes nuevas y revisiones en la hoja de control.",
+      },
+      routing: {
+        name: "Routing (RTS)",
+        description: "Estima pallets por PO, concilia con el portal de Wiesner y agrupa las POs en RTS por destino.",
       },
     },
   },

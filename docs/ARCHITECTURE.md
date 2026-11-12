@@ -30,7 +30,12 @@ app/
 ├── shared/                 utilidades reutilizables (sin dependencias de módulos)
 │   ├── dates.py  text.py  containers.py  spreadsheet.py  db.py
 │   ├── google/             credenciales OAuth (auth.py, config.py) y lectura de Gmail (gmail.py)
-│   └── pick_ticket/        lector del PDF de Pick Tickets (patterns, item_line, page, parser, schemas)
+│   ├── pick_ticket/        lector del PDF de Pick Tickets (patterns, item_line, page, parser, schemas,
+│   │                       ship_to_block = columna SHIP TO por posición, address = dirección y su clave)
+│   ├── packing/            motor de empaque de pallets (models, layer_patterns, placement,
+│   │                       group_packer, physics_engine, config): Paletizador y Routing
+│   └── wiesner/            customers.py (código de cliente, ventana de routing; MODE = BURL) y
+│                           portal/ (cliente de solo lectura, sesión única, lector de la tabla)
 └── modules/<id>/
     ├── module.py           ModuleSpec(id, router, background_tasks) -> registro automático
     ├── config.py           configuración propia del módulo
@@ -46,8 +51,9 @@ Módulos actuales:
 
 | Módulo | Ruta API | Piezas principales |
 |---|---|---|
-| `palletizer` | `/api/palletizer` | `services/`: `models`, `layer_patterns`, `placement`, `group_packer`, `physics_engine`, `packing_service` (entrada) |
-| `open_orders` | `/api/open-orders` | `rules/` (window, cfrm, status, changes), `services/` (refresh, views, history_import), `portal_client`, `parser`, `scheduler` |
+| `palletizer` | `/api/palletizer` | `services/packing_service` (entrada; el motor está en `shared/packing`) |
+| `open_orders` | `/api/open-orders` | `rules/` (cfrm, status, changes), `services/` (refresh, views, history_import), `scheduler` (portal en `shared/wiesner`) |
+| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping), `services/` (estimate, purchase_orders, plan), `config` (reglas de RTS) |
 | `order_intake` | `/api/order-intake` | `rules/` (columns, received, revision, inbox), `services/` (analysis, writer, gmail_sync, inbox), `sheets_client`, `inbox_repository`, `inbox_router`, `scheduler` (revisión de Gmail) |
 
 ### Agregar un módulo de backend
@@ -80,7 +86,7 @@ src/
 ├── shared/                 reutilizable por todos los módulos
 │   ├── api/                createApiClient(prefijo), jsonBody, fileBody, API_BASE_URL
 │   ├── settings/           AppSettingsProvider, useAppSettings, useTranslations
-│   ├── components/         Alert, Badge, DataTable, FileButton, PageHeader, Tabs (index.js)
+│   ├── components/         Alert, Badge, CopyValue, DataTable, FileButton, PageHeader, Tabs (index.js)
 │   ├── hooks/              useBusyTask (ocupado + error de una tarea asíncrona)
 │   ├── i18n/format.js      fmt("{n} órdenes", { n })
 │   └── utils/              dates.js, storage.js

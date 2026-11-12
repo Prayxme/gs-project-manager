@@ -14,7 +14,7 @@ export const WAREHOUSES = [
     icon: "🏭",
     status: "active",
     clients: [
-      { id: "wiesner", name: "Wiesner", icon: "🧦", modules: ["palletizer", "open-orders", "order-intake"] },
+      { id: "wiesner", name: "Wiesner", icon: "🧦", modules: ["palletizer", "open-orders", "order-intake", "routing"] },
     ],
   },
   { id: "perris", name: "Perris", icon: "🏭", status: "soon", clients: [] },
