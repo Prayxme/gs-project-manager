@@ -45,6 +45,8 @@ export function useRoutingPlan({ t, task, seleccion, restaurar }) {
   }, [seleccion.key, cargarSeleccion]);
 
   const limpiar = useCallback(() => guardar(VACIO), [guardar]);
+  // Plan calculado por otra vía (Pre Routing).
+  const mostrar = useCallback((plan, files) => guardar({ plan, files, selKey: "" }), [guardar]);
 
-  return { plan: estado.plan, files: estado.files, subir, cargarSeleccion, limpiar };
+  return { plan: estado.plan, files: estado.files, subir, cargarSeleccion, limpiar, mostrar };
 }

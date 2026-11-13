@@ -43,6 +43,18 @@ class PickTicketCatalog:
                 guardados += 1
         return guardados
 
+    def destino_por_prefijo(self, cust: str, prefijo: str) -> Optional[Dict]:
+        """SHIP TO del Pick Ticket más reciente de ese Customer No cuya PO empieza por `prefijo`
+        (en TJMA / MARS / NEWT los 2 primeros dígitos de la PO indican el DC). None si no hay."""
+        q = (select(orders.c.data).where(orders.c.cust_no == cust, orders.c.po.startswith(prefijo, autoescape=True))
+             .order_by(orders.c.received_at.desc()).limit(20))
+        with self.engine.connect() as c:
+            for (data,) in c.execute(q):
+                ship_to = (data or {}).get("ship_to") or {}
+                if ship_to.get("zip") and ship_to.get("key"):
+                    return dict(ship_to)
+        return None
+
     def ordenes(self, piktiks: Iterable[str]) -> Dict[str, Dict]:
         """{piktik: orden leída} de los PikTiks pedidos que estén en el catálogo."""
         lista = list(dict.fromkeys(piktiks))

@@ -56,7 +56,7 @@ Módulos actuales:
 |---|---|---|
 | `palletizer` | `/api/palletizer` | `services/packing_service` (entrada; el motor está en `shared/packing`) |
 | `open_orders` | `/api/open-orders` | `rules/` (cfrm, status, changes), `services/` (refresh, views, history_import), `scheduler` (portal en `shared/wiesner`) |
-| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping, selection), `services/` (estimate, purchase_orders, plan, selection), `config` (reglas de RTS). `POST /plan` (PDFs subidos; con `status`/`cust` solo toma las órdenes de esa selección), `GET /selection` (órdenes del portal por estado y Customer No, con el catálogo) y `GET /urgent` (atajo: vencidas, último día y atención) |
+| `routing` | `/api/routing` | `rules/` (margin, declared, min_weight, reconcile, grouping, selection), `services/` (estimate, purchase_orders, plan, selection), `config` (reglas de RTS). `POST /plan` (PDFs subidos; con `status`/`cust` solo toma las órdenes de esa selección), `GET /selection` (órdenes del portal por estado y Customer No, con el catálogo) y `GET /urgent` (atajo: vencidas, último día y atención). Pre Routing (POs sin Pick Ticket, por cubo): `rules/preroute`, `rules/cube`, `services/preroute_excel`, `services/preroute`, `preroute_router` (`POST /preroute/parse`, `/preroute/plan`) |
 
 Los módulos se enlazan en la interfaz solo por URL: el Monitor abre `../routing?status=OVERDUE&cust=BURL120`
 (o `?scope=urgent`) y Routing abre `../palletizer?source=preview` para ver un RTS en 3D. Los datos que

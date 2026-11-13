@@ -13,6 +13,11 @@ export default function PlanSummary({ plan, files, t }) {
       ) : (
         <Alert kind="warning">{fmt(t.portalDown, { e: portal.error })}</Alert>
       )}
+      {plan.preroute && (
+        <p className="text-sm font-bold text-ink">
+          📊 {fmt(t.pre.intro, { l: plan.preroute.lines, c: plan.preroute.cube.toLocaleString(), k: plan.preroute.cft_per_pallet })}
+        </p>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {KPIS.map((k) => (
           <div key={k} className="card px-3 py-2">

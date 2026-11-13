@@ -1,4 +1,4 @@
-import { createApiClient } from "../../../shared/api";
+import { createApiClient, fileBody, jsonBody } from "../../../shared/api";
 import { camposDeSeleccion } from "../utils/selection";
 
 const request = createApiClient("/routing");
@@ -18,3 +18,10 @@ export function selectionPlan(seleccion, today) {
   const query = new URLSearchParams([...camposDeSeleccion(seleccion), ["today", today]]);
   return request(`/selection?${query}`, {}, { requireBody: true });
 }
+
+// Pre Routing: Excel -> líneas limpias para revisar.
+export const parsePreRoute = (file) => request("/preroute/parse", fileBody(file), { requireBody: true });
+
+// Pre Routing: líneas (Excel o a mano) -> plan de RTS estimado por cubo.
+export const preRoutePlan = (lines, today) =>
+  request("/preroute/plan", jsonBody({ lines, today }), { requireBody: true });

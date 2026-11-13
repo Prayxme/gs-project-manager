@@ -1,15 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigationType, useSearchParams } from "react-router-dom";
-import { Alert, FileButton, InfoPanel, PageHeader } from "../../shared/components";
+import { Alert, FileButton, InfoPanel, PageHeader, Tabs } from "../../shared/components";
 import { useBusyTask } from "../../shared/hooks/useBusyTask";
 import { useTranslations } from "../../shared/settings";
 import AlreadyRoutedList from "./components/AlreadyRoutedList";
 import ExcludedList from "./components/ExcludedList";
 import MissingList from "./components/MissingList";
 import PlanSummary from "./components/PlanSummary";
+import PreRoutePanel from "./components/PreRoutePanel";
 import RtsCard from "./components/RtsCard";
 import SelectionBar from "./components/SelectionBar";
 import { I18N } from "./constants";
+import { usePreRoute } from "./hooks/usePreRoute";
 import { useRoutingPlan } from "./hooks/useRoutingPlan";
 import { URGENT_QUERY, seleccionDesdeUrl } from "./utils/selection";
 
@@ -26,7 +28,12 @@ export default function RoutingPage() {
   const navegacion = useNavigationType();
   const { state } = useLocation();
   const restaurar = navegacion === "POP" || Boolean(state?.restore);
-  const { plan, files, subir, cargarSeleccion, limpiar } = useRoutingPlan({ t, task, seleccion, restaurar });
+  const { plan, files, subir, cargarSeleccion, limpiar, mostrar } = useRoutingPlan({ t, task, seleccion, restaurar });
+
+  // Dos formas de dar los datos: Pick Tickets (PDF / Monitor) o Pre Routing (Excel o a mano, por cubo).
+  const pre = usePreRoute({ t, task, onPlan: mostrar });
+  const [modoElegido, setModo] = useState(() => (plan?.source === "preroute" ? "preroute" : "pdf"));
+  const modo = seleccion.key ? "pdf" : modoElegido;
 
   const urgentes = () => (params.get("scope") === "urgent" ? cargarSeleccion() : setParams(URGENT_QUERY));
   const quitarSeleccion = () => {
@@ -53,6 +60,15 @@ export default function RoutingPage() {
 
         <InfoPanel id="routing" title={t.info.title} sections={t.info.sections} />
 
+        {!seleccion.key && (
+          <Tabs
+            active={modo}
+            onChange={setModo}
+            tabs={[["pdf", t.modes.pdf], ["preroute", t.modes.preroute, pre.lines.length || undefined]]}
+          />
+        )}
+        {modo === "preroute" && <PreRoutePanel pre={pre} busy={!!task.busy} t={t} />}
+
         <SelectionBar
           seleccion={seleccion}
           plan={plan}
@@ -64,7 +80,7 @@ export default function RoutingPage() {
 
         <Alert onClose={() => task.setError("")}>{task.error}</Alert>
         {task.busy && <p className="text-sm font-bold text-muted animate-pulse">{task.busy}</p>}
-        {!plan && !task.busy && <p className="card p-4 text-sm text-muted">{t.empty}</p>}
+        {!plan && !task.busy && modo === "pdf" && <p className="card p-4 text-sm text-muted">{t.empty}</p>}
 
         {plan && (
           <>

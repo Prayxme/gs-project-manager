@@ -54,17 +54,24 @@ def _rts(clave, pos: List[Dict], numero: int) -> Dict:
         "cartons": sum(p["cartons"] for p in pos),
         "weight": sum(p["weight"] for p in pos),
         "cft": sum(p["cft"] for p in pos),
+        "cube": round(sum(p.get("cube") or 0 for p in pos), 1),     # cubo real (solo Pre Routing)
         "verified": all(p["status"] == "OK" for p in pos),
+        "source": pos[0].get("source", "pdf"),
         "pos": sorted(pos, key=lambda p: p["po"]),
     }
 
 
 def construir_plan(pdfs: List[Dict], portal: Dict, hoy: date, faltantes: Optional[List[Dict]] = None) -> Dict:
-    """`faltantes`: órdenes urgentes del portal de las que no se tiene el Pick Ticket (solo se informan)."""
+    """`faltantes`: órdenes de la selección de las que no se tiene el Pick Ticket (solo se informan)."""
     avisos: List[str] = []
-    ordenes = portal["orders"]
-    pos = [armar_po(po, pks, ordenes, hoy) for po, pks in _piktiks_por_po(pdfs, avisos).items()]
+    pos = [armar_po(po, pks, portal["orders"], hoy) for po, pks in _piktiks_por_po(pdfs, avisos).items()]
+    return armar_plan(pos, portal, hoy, avisos, len(pdfs), faltantes)
 
+
+def armar_plan(pos: List[Dict], portal: Dict, hoy: date, avisos: List[str], pdfs: int = 0,
+               faltantes: Optional[List[Dict]] = None) -> Dict:
+    """POs ya conciliadas y estimadas (de Pick Tickets o de Pre Routing) -> RTS propuestos."""
+    ordenes = portal["orders"]
     no_enrutables = rules.EXCLUIDOS + (NO_ITEMS,)
     grupos: Dict[tuple, List[Dict]] = defaultdict(list)
     for p in pos:
@@ -90,7 +97,7 @@ def construir_plan(pdfs: List[Dict], portal: Dict, hoy: date, faltantes: Optiona
         "portal": {"ok": ordenes is not None, "error": portal["error"],
                    "orders": len(ordenes) if ordenes is not None else 0},
         "summary": {
-            "pdfs": len(pdfs),
+            "pdfs": pdfs,
             "pos": len(pos),
             "routable": sum(len(r["pos"]) for r in rts),
             "already_routed": len(ya_enrutadas),

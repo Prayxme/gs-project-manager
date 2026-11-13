@@ -6,6 +6,7 @@ export const STATUS_STYLE = {
   NOT_IN_PORTAL: "bg-red-600 text-white",
   ALREADY_ROUTED: "bg-surface-3 text-ink-2",
   NO_ITEMS: "bg-amber-400 text-slate-900",
+  PRE_ROUTE: "bg-sky-600 text-white",
 };
 
 export const ATTENTION_DAYS = 3;

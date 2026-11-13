@@ -8,6 +8,7 @@ export default function ViewPalletsButton({ rts, t }) {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const hayLineas = rts.pos.some((po) => po.items?.length);
+  if (!hayLineas) return null;      // Pre Routing: sin dimensiones de caja no hay armado 3D
 
   const abrir = () => {
     guardarVistaPallets(vistaDeRts(rts, t, pathname + search));

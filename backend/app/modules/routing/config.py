@@ -26,3 +26,7 @@ LARGO_PREFIJO_PO = 2
 # llevan en promedio los demás, casi no cuenta como pallet: se suma un pallet menos de margen.
 ULTIMA_PALLET_BAJA = 0.35
 MARGEN_MINIMO = 1                   # el margen nunca baja de un pallet
+
+# Pre Routing (sin Pick Ticket): solo se conoce el cubo. CFT de cajas que caben en un pallet armado
+# (un pallet 48x40 con 79.5 in útiles mide 88.3 CFT; armado real con los estilos conocidos: ver BITACORA).
+CFT_UTIL_POR_PALLET = 72.0

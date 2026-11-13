@@ -28,7 +28,9 @@ export default function RtsCard({ rts, t }) {
             <span className="font-extrabold text-ink">{usDate(rts.cancel_date)}</span>
           </span>
           <DeadlineBadge deadline={rts.deadline} daysLeft={rts.days_left} t={t} />
-          {!rts.verified && <Badge className="bg-amber-400 text-slate-900">{t.unverified}</Badge>}
+          {rts.source === "preroute"
+            ? <Badge className="bg-sky-600 text-white">{t.pre.badge}</Badge>
+            : !rts.verified && <Badge className="bg-amber-400 text-slate-900">{t.unverified}</Badge>}
           <ViewPalletsButton rts={rts} t={t} />
         </div>
       </header>
@@ -64,7 +66,10 @@ export default function RtsCard({ rts, t }) {
               <td className="pt-1.5 pr-2 text-right"><CopyValue value={rts.units} /></td>
               <td className="pt-1.5 pr-2 text-right"><CopyValue value={rts.cartons} /></td>
               <td className="pt-1.5 pr-2 text-right"><CopyValue value={rts.weight} /></td>
-              <td className="pt-1.5 pr-2 text-right"><CopyValue value={rts.cft} /></td>
+              <td className="pt-1.5 pr-2 text-right">
+                <CopyValue value={rts.cft} />
+                {rts.cube > 0 && <div className="text-[11px] text-muted whitespace-nowrap">{fmt(t.pre.realCube, { c: rts.cube })}</div>}
+              </td>
               <td className="pt-1.5 text-right"><CopyValue value={rts.pallets} className="text-brand-ink" /></td>
             </tr>
           </tfoot>

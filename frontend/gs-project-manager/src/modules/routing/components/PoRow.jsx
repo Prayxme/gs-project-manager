@@ -11,6 +11,7 @@ export default function PoRow({ po, t }) {
         <td className="py-1.5 pr-2">
           <div className="flex flex-col items-start">
             {po.piktiks.map((pk) => <CopyValue key={pk} value={pk} className="font-semibold text-ink-2" />)}
+            {po.source === "preroute" && <span className="text-[11px] font-bold text-muted">{t.pre.noPiktik}</span>}
           </div>
         </td>
         <td className="py-1.5 pr-2 text-xs text-muted font-bold whitespace-nowrap">{po.cust}</td>
@@ -24,7 +25,10 @@ export default function PoRow({ po, t }) {
             </div>
           )}
         </td>
-        <td className="py-1.5 pr-2 text-right"><CopyValue value={po.cft} /></td>
+        <td className="py-1.5 pr-2 text-right">
+          <CopyValue value={po.cft} />
+          {po.cube > 0 && <div className="text-[11px] text-muted whitespace-nowrap">{fmt(t.pre.realCube, { c: po.cube })}</div>}
+        </td>
         <td className="py-1.5 text-right">
           <CopyValue value={po.pallets} className="text-brand-ink" />
           <div className="text-[11px] text-muted whitespace-nowrap">{fmt(t.cols.estimated, { n: po.estimated_pallets })}</div>

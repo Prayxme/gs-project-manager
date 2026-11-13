@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from app.core.errors import http_errors
 from app.modules.routing import services
 from app.modules.routing.dependencies import get_catalog, get_catalog_opcional, get_fetcher
+from app.modules.routing.preroute_router import router as preroute_router
 from app.shared.dates import utc_now
 from app.shared.pick_ticket import extraer_datos_pick_ticket
 from app.shared.pick_ticket_catalog import PickTicketCatalog, fecha_del_archivo, registrar_pdf
@@ -15,6 +16,7 @@ from app.shared.wiesner import STATUS_ORDER, URGENT_STATUSES
 
 router = APIRouter(prefix="/api/routing", tags=["Routing"])
 log = logging.getLogger("routing")
+router.include_router(preroute_router)
 
 ESTADOS_ENRUTABLES = [s for s in STATUS_ORDER if s != "ROUTED"]
 
